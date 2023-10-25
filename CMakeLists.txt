@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(doom LANGUAGES C)
 
-set(sources)
+set(sources "game.c" "game_impl.c")
 set(source_files_list "")
 foreach(source ${sources})
     list(APPEND source_files_list "${CMAKE_CURRENT_SOURCE_DIR}/src/${source}")
