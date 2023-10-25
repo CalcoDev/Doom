@@ -111,6 +111,9 @@ void SetPixel(u32 x, u32 y, u32 colour)
   state.dirty = 1;
 }
 
+struct nk_glfw nk_glfw = {0};
+struct nk_context* nk_ctx = {0};
+
 int main()
 {
   AssertTrue(glfwInit() != 0, "Failed to initialize glfw.", "");
@@ -128,6 +131,13 @@ int main()
   glfwMakeContextCurrent(state.window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
   glfwSwapInterval(1);
+
+  nk_ctx = nk_glfw3_init(&nk_glfw, state.window, NK_GLFW3_INSTALL_CALLBACKS);
+  {
+    struct nk_font_atlas* atlas;
+    nk_glfw3_font_stash_begin(&nk_glfw, &atlas);
+    nk_glfw3_font_stash_end(&nk_glfw);
+  }
 
   static const f32 verts[] = {-1, 1, -1, -1, 1, -1, 1, -1, 1, 1, -1, 1};
   static const char* vs_s =
@@ -169,10 +179,10 @@ int main()
   );
 
   glUseProgram(program);
-  glViewport(0, 0, WINDOW_W, WINDOW_H);
   while (!glfwWindowShouldClose(state.window))
   {
     glfwPollEvents();
+    nk_glfw3_new_frame(&nk_glfw);
 
     if (glfwGetKey(state.window, GLFW_KEY_ESCAPE))
       glfwSetWindowShouldClose(state.window, 1);
@@ -186,8 +196,31 @@ int main()
       );
     }
     // TODO(calco): Maybe do this only if dirty too.
+
+    glViewport(0, 0, WINDOW_W, WINDOW_H);
+    glBlendFunc(GL_ONE, GL_ZERO);
+    glDisable(GL_SCISSOR_TEST);
+    glScissor(0, 0, 1280, 720);
+    glCullFace(GL_BACK);
+    glDepthFunc(GL_LESS);
+    glDisable(GL_DEPTH_TEST);
+    glBindVertexArray(vao);
+    glBindTexture(GL_TEXTURE_2D, state.glfw_texture);
+    glUseProgram(program);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    // gui
+    nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE |
+                     NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
+    if (nk_begin(nk_ctx, "Rares UI", nk_rect(50, 50, 640, 360), flags))
+    {
+      nk_layout_row_static(nk_ctx, 30, 80, 1);
+      if (nk_button_label(nk_ctx, "button"))
+        Log("Pressed button lol", "");
+    }
+    nk_end(nk_ctx);
+
+    nk_glfw3_render(&nk_glfw, NK_ANTI_ALIASING_OFF, 512 * 1024, 128 * 1024);
     glfwSwapBuffers(state.window);
   }
 
