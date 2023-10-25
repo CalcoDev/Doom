@@ -7,8 +7,8 @@
 #define WINDOW_W 1280
 #define WINDOW_H 720
 
-#define VIEWPORT_W 320
-#define VIEWPORT_H 180
+#define VIEWPORT_W 32
+#define VIEWPORT_H 18
 
 #define Bytes(n)     n
 #define Kilobytes(n) n << 10
@@ -86,10 +86,17 @@ void glfwErrorCallback(int code, const char* msg)
 typedef struct State
 {
   GLFWwindow* window;
-  u8 glfw_texture;
-  u8 pixels[WINDOW_W * WINDOW_H];
+  u32 glfw_texture;
+  u32 pixels[WINDOW_W * WINDOW_H];
+  b8 dirty;
 } State;
 State state;
+
+void SetPixel(u32 x, u32 y, u32 colour)
+{
+  state.pixels[x * VIEWPORT_W + y] = colour;
+  state.dirty = 1;
+}
 
 int main()
 {
@@ -102,11 +109,10 @@ int main()
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); // Mac
 
-  GLFWwindow* window = glfwCreateWindow(WINDOW_W, WINDOW_H, "Doom", NULL, NULL);
-  AssertTrue(window != NULL, "Failed to create window!", "");
-  state.window = window;
+  state.window = glfwCreateWindow(WINDOW_W, WINDOW_H, "Doom", NULL, NULL);
+  AssertTrue(state.window != NULL, "Failed to create window!", "");
 
-  glfwMakeContextCurrent(window);
+  glfwMakeContextCurrent(state.window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
   glfwSwapInterval(1);
 
@@ -114,8 +120,9 @@ int main()
   static const char* vs_s =
       "#version 330 core\nlayout(location = 0) in vec2 p;out vec2 tc;void "
       "main(){tc=p;gl_Position=vec4(p.xy, 1, 1);}";
-  static const char* fs_s = "#version 330 core\nin vec2 tc;out vec4 FC;void "
-                            "main(){FC=vec4(tc.xy, 0, 1);}";
+  static const char* fs_s =
+      "#version 330 core\nout vec4 FC;in vec2 tc;uniform sampler2D "
+      "t;void main(){FC=texture(t, vec2((tc.x+1)/2,(tc.y+1)/2));}";
 
   u32 vs = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vs, 1, &vs_s, NULL);
@@ -137,18 +144,38 @@ int main()
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(f32), (void*)0);
   glEnableVertexAttribArray(0);
 
+  glGenTextures(1, &state.glfw_texture);
+  glBindTexture(GL_TEXTURE_2D, state.glfw_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(
+      GL_TEXTURE_2D, 0, GL_RGBA, VIEWPORT_W, VIEWPORT_H, 0, GL_RGBA,
+      GL_UNSIGNED_BYTE, &state.pixels[0]
+  );
+
   glUseProgram(program);
   glViewport(0, 0, WINDOW_W, WINDOW_H);
-  while (!glfwWindowShouldClose(window))
+  while (!glfwWindowShouldClose(state.window))
   {
     glfwPollEvents();
 
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE))
-      glfwSetWindowShouldClose(window, 1);
+    if (glfwGetKey(state.window, GLFW_KEY_ESCAPE))
+      glfwSetWindowShouldClose(state.window, 1);
 
+    if (state.dirty)
+    {
+      state.dirty = 0;
+      glTexSubImage2D(
+          GL_TEXTURE_2D, 0, 0, 0, VIEWPORT_W, VIEWPORT_H, GL_RGBA,
+          GL_UNSIGNED_BYTE, &state.pixels[0]
+      );
+    }
+    // TODO(calco): Maybe do this only if dirty too.
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
-    glfwSwapBuffers(window);
+    glfwSwapBuffers(state.window);
   }
 
   glDeleteShader(vs);
