@@ -15,3 +15,4 @@ BreakBeforeBraces: Allman
 
 IndentPPDirectives: AfterHash
 IndentCaseLabels: true
+SortIncludes: false
