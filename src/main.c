@@ -135,7 +135,7 @@ b8 GetKeyUp(u16 key) { return !state.curr_keys[key]; }
 
 void SetPixel(u32 x, u32 y, u32 colour)
 {
-  state.pixels[x * VIEWPORT_W + y] = colour;
+  state.pixels[y * VIEWPORT_W + x] = colour;
   state.dirty = 1;
 }
 
@@ -211,6 +211,11 @@ int main()
       GL_UNSIGNED_BYTE, &state.pixels[0]
   );
 
+  f32 f = 0.0f;
+
+  u32 x = 10;
+  u32 y = 20;
+
   glUseProgram(program);
   while (!glfwWindowShouldClose(state.window))
   {
@@ -224,6 +229,10 @@ int main()
 
       glfwPollEvents();
 
+      ImGui_ImplGlfw_NewFrame();
+      ImGui_ImplOpenGL3_NewFrame();
+      igNewFrame();
+
       if (GetKeyPressed(GLFW_KEY_ESCAPE))
         glfwSetWindowShouldClose(state.window, 1);
       if (GetKeyPressed(GLFW_KEY_F3))
@@ -231,6 +240,8 @@ int main()
         Log("Pressed F3", "");
         state.show_debug_ui = !state.show_debug_ui;
       }
+
+      SetPixel(x, y, 0xFF000000FF);
 
       if (state.dirty)
       {
@@ -240,28 +251,44 @@ int main()
             GL_UNSIGNED_BYTE, &state.pixels[0]
         );
       }
-      glViewport(0, 0, WINDOW_W, WINDOW_H);
-      glBlendFunc(GL_ONE, GL_ZERO);
-      glDisable(GL_SCISSOR_TEST);
-      glScissor(0, 0, 1280, 720);
-      glCullFace(GL_BACK);
-      glDepthFunc(GL_LESS);
-      glDisable(GL_DEPTH_TEST);
-      glBindVertexArray(vao);
-      glBindTexture(GL_TEXTURE_2D, state.glfw_texture);
-      glUseProgram(program);
+
       glDrawArrays(GL_TRIANGLES, 0, 6);
 
       // gui
       if (state.show_debug_ui)
       {
+        igBegin("Amodo Bazooka", NULL, 0);
+
+        igText("This is some useful text");
+        igSliderFloat("Float", &f, 0.0f, 1.0f, "%.3f", 0);
+
+        igSliderInt("X", &x, 0, VIEWPORT_W - 1, "%i", 0);
+        igSliderInt("Y", &y, 0, VIEWPORT_H - 1, "%i", 0);
+
+        if (igButton("Sh sh", (ImVec2){0, 0}))
+        {
+          Log("Clicked the button yo.", "");
+        }
+
+        igText(
+            "Application average %.3f ms/frame (%.1f FPS)",
+            1000.0f / igGetIO()->Framerate, igGetIO()->Framerate
+        );
+        igEnd();
       }
+
+      igRender();
+      ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
 
       glfwSwapBuffers(state.window);
 
       state.prev_time = state.curr_time;
     }
   }
+
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  igDestroyContext(NULL);
 
   glDeleteShader(vs);
   glDeleteShader(fs);
