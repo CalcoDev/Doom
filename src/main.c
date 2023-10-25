@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <glad/glad.h>
+#define GLFW_INCLUDE_NONE
 #include <glfw/glfw3.h>
 
 #define WINDOW_W 1280
@@ -77,26 +78,67 @@ flush;
 #  define AssertTrue(c, format, ...)  Statement()
 #endif
 
+void glfwErrorCallback(int code, const char* msg)
+{
+  printf("GLFW error: %d - %s\\n", code, msg);
+}
+
+typedef struct State
+{
+  GLFWwindow* window;
+  u8 glfw_texture;
+  u8 pixels[WINDOW_W * WINDOW_H];
+} State;
+State state;
+
 int main()
 {
   AssertTrue(glfwInit() != 0, "Failed to initialize glfw.", "");
 
-  GLFWwindow* window = glfwCreateWindow(WINDOW_W, WINDOW_H, "Doom", NULL, NULL);
-  AssertTrue(window != NULL, "Failed to create window!", "");
+  glfwSetErrorCallback(glfwErrorCallback);
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); // Mac
 
-  glfwWindowHint(GLFW_DEPTH_BITS, 24);
+  GLFWwindow* window = glfwCreateWindow(WINDOW_W, WINDOW_H, "Doom", NULL, NULL);
+  AssertTrue(window != NULL, "Failed to create window!", "");
+  state.window = window;
+
   glfwMakeContextCurrent(window);
+  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+  glfwSwapInterval(1);
 
-  AssertTrue(
-      gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) != 0,
-      "Failed to load glad.", ""
-  );
+  static const f32 verts[] = {-1, 1, -1, -1, 1, -1, 1, -1, 1, 1, -1, 1};
+  static const char* vs_s =
+      "#version 330 core\nlayout(location = 0) in vec2 p;out vec2 tc;void "
+      "main(){tc=p;gl_Position=vec4(p.xy, 1, 1);}";
+  static const char* fs_s = "#version 330 core\nin vec2 tc;out vec4 FC;void "
+                            "main(){FC=vec4(tc.xy, 0, 1);}";
 
+  u32 vs = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vs, 1, &vs_s, NULL);
+  glCompileShader(vs);
+  u32 fs = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fs, 1, &fs_s, NULL);
+  glCompileShader(fs);
+  u32 program = glCreateProgram();
+  glAttachShader(program, vs);
+  glAttachShader(program, fs);
+  glLinkProgram(program);
+  u32 vao;
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  u32 vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(f32), (void*)0);
+  glEnableVertexAttribArray(0);
+
+  glUseProgram(program);
+  glViewport(0, 0, WINDOW_W, WINDOW_H);
   while (!glfwWindowShouldClose(window))
   {
     glfwPollEvents();
@@ -104,8 +146,14 @@ int main()
     if (glfwGetKey(window, GLFW_KEY_ESCAPE))
       glfwSetWindowShouldClose(window, 1);
 
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
     glfwSwapBuffers(window);
   }
+
+  glDeleteShader(vs);
+  glDeleteShader(fs);
+  glDeleteProgram(program);
 
   glfwTerminate();
 }
