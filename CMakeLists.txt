@@ -33,3 +33,7 @@ set(GLFW_INSTALL OFF)
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw")
 target_link_libraries("${PROJECT_NAME}" glfw)
+
+# nuklear
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/nuklear")
+target_link_libraries("${PROJECT_NAME}" nuklear)
