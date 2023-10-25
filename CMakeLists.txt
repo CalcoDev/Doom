@@ -43,37 +43,6 @@ endif()
 # target_link_libraries("${PROJECT_NAME}" nuklear)
 
 # cimgui
-if (WIN32)
-    add_definitions("-DIMGUI_IMPL_API=extern \"C\" __declspec\(dllexport\)")
-else(WIN32)
-    add_definitions("-DIMGUI_IMPL_API=extern \"C\" ")
-endif(WIN32)
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/imgui_tables.cpp")
-	set(TABLES_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/imgui_tables.cpp")
-else()
-	set(TABLES_SOURCE "")
-endif()
-
-set(IMGUI_SOURCES 
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/cimgui.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/imgui.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/imgui_draw.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/imgui_demo.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/imgui_widgets.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/backends/imgui_impl_glfw.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/backends/imgui_impl_opengl3.cpp"
-    ${TABLES_SOURCE} 
-)
-
-add_library(cimgui "${IMGUI_SOURCES}")
-target_include_directories(cimgui PUBLIC 
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui/backends"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/imgui"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui"
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui/generator/output"
-)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui")
 target_link_libraries(cimgui glfw)
-
-# add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui")
 target_link_libraries("${PROJECT_NAME}" cimgui)
