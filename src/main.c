@@ -18,8 +18,10 @@
 // #include <nuklear/nuklear_glfw_gl3.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#define CIMGUI_USE_GLFW
+#define CIMGUI_USE_OPENGL3
 #include "cimgui.h"
-#include "generator/output/cimgui_impl.h"
+#include "cimgui_impl.h"
 
 #define WINDOW_W 1280
 #define WINDOW_H 720
@@ -159,6 +161,16 @@ int main()
 
   glfwMakeContextCurrent(state.window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+  igCreateContext(NULL);
+
+  ImGuiIO* io = igGetIO();
+  io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+  ImGui_ImplGlfw_InitForOpenGL(state.window, 1);
+  ImGui_ImplOpenGL3_Init("#version 330 core");
+
+  igStyleColorsDark(NULL);
 
   static const f32 verts[] = {-1, 1, -1, -1, 1, -1, 1, -1, 1, 1, -1, 1};
   static const char* vs_s =
