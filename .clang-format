@@ -1,0 +1,17 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+ColumnLimit: 80
+
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignConsecutiveAssignments: Consecutive
+
+AlignAfterOpenBracket: BlockIndent
+BreakBeforeBraces: Allman
+
+IndentPPDirectives: AfterHash
+IndentCaseLabels: true
