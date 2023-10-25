@@ -4,18 +4,22 @@
 #define GLFW_INCLUDE_NONE
 #include <glfw/glfw3.h>
 
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-#define NK_IMPLEMENTATION
-#define NK_GLFW_GL3_IMPLEMENTATION
-#define NK_KEYSTATE_BASED_INPUT
-#include <nuklear/nuklear.h>
-#include <nuklear/nuklear_glfw_gl3.h>
+// #define NK_INCLUDE_FIXED_TYPES
+// #define NK_INCLUDE_STANDARD_IO
+// #define NK_INCLUDE_STANDARD_VARARGS
+// #define NK_INCLUDE_DEFAULT_ALLOCATOR
+// #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+// #define NK_INCLUDE_FONT_BAKING
+// #define NK_INCLUDE_DEFAULT_FONT
+// #define NK_IMPLEMENTATION
+// #define NK_GLFW_GL3_IMPLEMENTATION
+// #define NK_KEYSTATE_BASED_INPUT
+// #include <nuklear/nuklear.h>
+// #include <nuklear/nuklear_glfw_gl3.h>
+
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include "cimgui.h"
+#include "generator/output/cimgui_impl.h"
 
 #define WINDOW_W 1280
 #define WINDOW_H 720
@@ -91,9 +95,9 @@ flush;
 #  define AssertTrue(c, format, ...)  Statement()
 #endif
 
-#define D_MAX_NK_VERTEX  65536
-#define D_MAX_NK_ELEMENT 262144
-#define FRAMERATE        0.016667f
+// #define D_MAX_NK_VERTEX  65536
+// #define D_MAX_NK_ELEMENT 262144
+#define FRAMERATE 0.016667f
 
 typedef struct State
 {
@@ -108,15 +112,11 @@ typedef struct State
   f32 curr_time;
 
   // UI
-  struct nk_glfw nk_glfw;
-  struct nk_context* nk_ctx;
   b8 show_debug_ui;
 
   // Input
   b8 prev_keys[GLFW_KEY_LAST];
   b8 curr_keys[GLFW_KEY_LAST];
-
-  f32 lifespan;
 } State;
 State state;
 
@@ -159,14 +159,6 @@ int main()
 
   glfwMakeContextCurrent(state.window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-
-  state.nk_ctx =
-      nk_glfw3_init(&state.nk_glfw, state.window, NK_GLFW3_INSTALL_CALLBACKS);
-  {
-    struct nk_font_atlas* atlas;
-    nk_glfw3_font_stash_begin(&state.nk_glfw, &atlas);
-    nk_glfw3_font_stash_end(&state.nk_glfw);
-  }
 
   static const f32 verts[] = {-1, 1, -1, -1, 1, -1, 1, -1, 1, 1, -1, 1};
   static const char* vs_s =
@@ -219,7 +211,6 @@ int main()
         state.prev_keys[i] = state.curr_keys[i];
 
       glfwPollEvents();
-      nk_glfw3_new_frame(&state.nk_glfw);
 
       if (GetKeyPressed(GLFW_KEY_ESCAPE))
         glfwSetWindowShouldClose(state.window, 1);
@@ -252,61 +243,8 @@ int main()
       // gui
       if (state.show_debug_ui)
       {
-        if (nk_begin(
-                state.nk_ctx, "Debug UI", nk_rect(WINDOW_W - 320, 0, 320, 360),
-                NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE |
-                    NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE
-            ))
-        {
-          nk_layout_row_static(state.nk_ctx, 200, 300, 1);
-          nk_group_begin(
-              state.nk_ctx, "Time", NK_WINDOW_BORDER | NK_WINDOW_DYNAMIC
-          );
-          char buf[64];
-
-          nk_layout_row_static(state.nk_ctx, 12, 120, 2);
-          snprintf(buf, sizeof(buf), "Time: %f", state.curr_time);
-          nk_label_colored(
-              state.nk_ctx, buf, NK_TEXT_ALIGN_LEFT,
-              (struct nk_color){255, 0, 0, 255}
-          );
-          snprintf(
-              buf, sizeof(buf), "FPS: %f",
-              1.0f / (state.curr_time - state.prev_time)
-          );
-          nk_label(state.nk_ctx, buf, NK_TEXT_ALIGN_LEFT);
-
-          nk_label(state.nk_ctx, "Timescale: 1", NK_TEXT_ALIGN_LEFT);
-          nk_label(state.nk_ctx, "Ooga booga more height", NK_TEXT_ALIGN_LEFT);
-          nk_group_end(state.nk_ctx);
-
-          if (nk_tree_push(state.nk_ctx, NK_TREE_TAB, "Tre", NK_MAXIMIZED))
-          {
-            nk_label(
-                state.nk_ctx, "This is a funky thing hmm yes yes",
-                NK_TEXT_CENTERED
-            );
-            nk_property_float(
-                state.nk_ctx, "#Lifespan", 0, &state.lifespan, 2000, 0.01f,
-                0.01f
-            );
-            nk_tree_pop(state.nk_ctx);
-          }
-
-          nk_layout_row_static(state.nk_ctx, 20, 120, 2);
-          snprintf(buf, sizeof(buf), "Lifespan viewer: %f", state.curr_time);
-          nk_label_colored(
-              state.nk_ctx, buf, NK_TEXT_ALIGN_LEFT,
-              (struct nk_color){255, 255, 0, 255}
-          );
-        }
-        nk_end(state.nk_ctx);
       }
 
-      nk_glfw3_render(
-          &state.nk_glfw, NK_ANTI_ALIASING_OFF, D_MAX_NK_VERTEX,
-          D_MAX_NK_ELEMENT
-      );
       glfwSwapBuffers(state.window);
 
       state.prev_time = state.curr_time;

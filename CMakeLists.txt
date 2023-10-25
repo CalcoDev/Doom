@@ -39,5 +39,12 @@ if(MSVC)
     add_definitions("/wd4116")
 endif()
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/nuklear")
-target_link_libraries("${PROJECT_NAME}" nuklear)
+# add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/nuklear")
+# target_link_libraries("${PROJECT_NAME}" nuklear)
+
+# cimgui
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/cimgui")
+target_link_libraries("${PROJECT_NAME}" cimgui)
+
+# add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui_impl")
+# target_link_libraries("${PROJECT_NAME}" imgui_impl)
