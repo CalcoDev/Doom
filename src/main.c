@@ -107,7 +107,6 @@ typedef struct State
   GLFWwindow* window;
   u32 glfw_texture;
   u32 pixels[WINDOW_W * WINDOW_H];
-  b8 dirty;
 
   // Time
   f32 prev_time;
@@ -115,6 +114,7 @@ typedef struct State
 
   // UI
   b8 show_debug_ui;
+  ImGuiContext* imgui_ctx;
 
   // Input
   b8 prev_keys[GLFW_KEY_LAST];
@@ -133,10 +133,15 @@ b8 GetKeyReleased(u16 key)
 b8 GetKeyDown(u16 key) { return state.curr_keys[key]; }
 b8 GetKeyUp(u16 key) { return !state.curr_keys[key]; }
 
+void ClearPixels()
+{
+  for (u32 i = 0; i < VIEWPORT_W * VIEWPORT_H; ++i)
+    state.pixels[i] = 0x00000000;
+}
+
 void SetPixel(u32 x, u32 y, u32 colour)
 {
   state.pixels[y * VIEWPORT_W + x] = colour;
-  state.dirty = 1;
 }
 
 void GLFWKeyCallback(
@@ -162,13 +167,20 @@ int main()
   glfwMakeContextCurrent(state.window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-  igCreateContext(NULL);
+  state.imgui_ctx = igCreateContext(NULL);
 
   ImGuiIO* io = igGetIO();
   io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-  ImGui_ImplGlfw_InitForOpenGL(state.window, 1);
-  ImGui_ImplOpenGL3_Init("#version 330 core");
+  AssertTrue(
+      ImGui_ImplGlfw_InitForOpenGL(state.window, 1) != 0,
+      "Failed to initialize imgui for glfw & opengl.", ""
+  );
+
+  AssertTrue(
+      ImGui_ImplOpenGL3_Init("#version 330 core") != 0,
+      "Failed to initialize imgui for opengl.", ""
+  );
 
   igStyleColorsDark(NULL);
 
@@ -211,11 +223,6 @@ int main()
       GL_UNSIGNED_BYTE, &state.pixels[0]
   );
 
-  f32 f = 0.0f;
-
-  u32 x = 10;
-  u32 y = 20;
-
   glUseProgram(program);
   while (!glfwWindowShouldClose(state.window))
   {
@@ -229,10 +236,6 @@ int main()
 
       glfwPollEvents();
 
-      ImGui_ImplGlfw_NewFrame();
-      ImGui_ImplOpenGL3_NewFrame();
-      igNewFrame();
-
       if (GetKeyPressed(GLFW_KEY_ESCAPE))
         glfwSetWindowShouldClose(state.window, 1);
       if (GetKeyPressed(GLFW_KEY_F3))
@@ -241,35 +244,23 @@ int main()
         state.show_debug_ui = !state.show_debug_ui;
       }
 
-      SetPixel(x, y, 0xFF000000FF);
+      ClearPixels();
 
-      if (state.dirty)
-      {
-        state.dirty = 0;
-        glTexSubImage2D(
-            GL_TEXTURE_2D, 0, 0, 0, VIEWPORT_W, VIEWPORT_H, GL_RGBA,
-            GL_UNSIGNED_BYTE, &state.pixels[0]
-        );
-      }
+      glTexSubImage2D(
+          GL_TEXTURE_2D, 0, 0, 0, VIEWPORT_W, VIEWPORT_H, GL_RGBA,
+          GL_UNSIGNED_BYTE, &state.pixels[0]
+      );
 
       glDrawArrays(GL_TRIANGLES, 0, 6);
 
       // gui
+      ImGui_ImplGlfw_NewFrame();
+      ImGui_ImplOpenGL3_NewFrame();
+      igNewFrame();
+
       if (state.show_debug_ui)
       {
-        igBegin("Amodo Bazooka", NULL, 0);
-
-        igText("This is some useful text");
-        igSliderFloat("Float", &f, 0.0f, 1.0f, "%.3f", 0);
-
-        igSliderInt("X", &x, 0, VIEWPORT_W - 1, "%i", 0);
-        igSliderInt("Y", &y, 0, VIEWPORT_H - 1, "%i", 0);
-
-        if (igButton("Sh sh", (ImVec2){0, 0}))
-        {
-          Log("Clicked the button yo.", "");
-        }
-
+        igBegin("Debug Window", NULL, 0);
         igText(
             "Application average %.3f ms/frame (%.1f FPS)",
             1000.0f / igGetIO()->Framerate, igGetIO()->Framerate
