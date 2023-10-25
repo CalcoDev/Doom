@@ -91,6 +91,10 @@ flush;
 #  define AssertTrue(c, format, ...)  Statement()
 #endif
 
+#define D_MAX_NK_VERTEX  65536
+#define D_MAX_NK_ELEMENT 262144
+#define FRAMERATE        0.016667f
+
 void glfwErrorCallback(int code, const char* msg)
 {
   printf("GLFW error: %d - %s\\n", code, msg);
@@ -102,6 +106,9 @@ typedef struct State
   u32 glfw_texture;
   u32 pixels[WINDOW_W * WINDOW_H];
   b8 dirty;
+
+  f32 prev_time;
+  f32 curr_time;
 } State;
 State state;
 
@@ -130,7 +137,6 @@ int main()
 
   glfwMakeContextCurrent(state.window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-  glfwSwapInterval(1);
 
   nk_ctx = nk_glfw3_init(&nk_glfw, state.window, NK_GLFW3_INSTALL_CALLBACKS);
   {
@@ -181,47 +187,65 @@ int main()
   glUseProgram(program);
   while (!glfwWindowShouldClose(state.window))
   {
-    glfwPollEvents();
-    nk_glfw3_new_frame(&nk_glfw);
+    state.curr_time = glfwGetTime();
 
-    if (glfwGetKey(state.window, GLFW_KEY_ESCAPE))
-      glfwSetWindowShouldClose(state.window, 1);
-
-    if (state.dirty)
+    // Limit update FPS
+    if (state.curr_time - state.prev_time > FRAMERATE)
     {
-      state.dirty = 0;
-      glTexSubImage2D(
-          GL_TEXTURE_2D, 0, 0, 0, VIEWPORT_W, VIEWPORT_H, GL_RGBA,
-          GL_UNSIGNED_BYTE, &state.pixels[0]
+      glfwPollEvents();
+      nk_glfw3_new_frame(&nk_glfw);
+
+      if (glfwGetKey(state.window, GLFW_KEY_ESCAPE))
+        glfwSetWindowShouldClose(state.window, 1);
+
+      if (state.dirty)
+      {
+        state.dirty = 0;
+        glTexSubImage2D(
+            GL_TEXTURE_2D, 0, 0, 0, VIEWPORT_W, VIEWPORT_H, GL_RGBA,
+            GL_UNSIGNED_BYTE, &state.pixels[0]
+        );
+      }
+      glViewport(0, 0, WINDOW_W, WINDOW_H);
+      glBlendFunc(GL_ONE, GL_ZERO);
+      glDisable(GL_SCISSOR_TEST);
+      glScissor(0, 0, 1280, 720);
+      glCullFace(GL_BACK);
+      glDepthFunc(GL_LESS);
+      glDisable(GL_DEPTH_TEST);
+      glBindVertexArray(vao);
+      glBindTexture(GL_TEXTURE_2D, state.glfw_texture);
+      glUseProgram(program);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+
+      // gui
+      nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE |
+                       NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE |
+                       NK_WINDOW_TITLE;
+      if (nk_begin(nk_ctx, "Rares UI", nk_rect(50, 50, 640, 360), flags))
+      {
+        nk_layout_row_static(nk_ctx, 30, 80, 1);
+        if (nk_button_label(nk_ctx, "button"))
+          Log("Pressed button lol", "");
+
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Time: %f", state.curr_time);
+        struct nk_color color;
+        color.r = 255;
+        color.g = 0;
+        color.b = 0;
+        color.a = 255;
+        nk_label_colored(nk_ctx, buf, NK_TEXT_ALIGN_LEFT, color);
+      }
+      nk_end(nk_ctx);
+
+      nk_glfw3_render(
+          &nk_glfw, NK_ANTI_ALIASING_OFF, D_MAX_NK_VERTEX, D_MAX_NK_ELEMENT
       );
+      glfwSwapBuffers(state.window);
+
+      state.prev_time = state.curr_time;
     }
-    // TODO(calco): Maybe do this only if dirty too.
-
-    glViewport(0, 0, WINDOW_W, WINDOW_H);
-    glBlendFunc(GL_ONE, GL_ZERO);
-    glDisable(GL_SCISSOR_TEST);
-    glScissor(0, 0, 1280, 720);
-    glCullFace(GL_BACK);
-    glDepthFunc(GL_LESS);
-    glDisable(GL_DEPTH_TEST);
-    glBindVertexArray(vao);
-    glBindTexture(GL_TEXTURE_2D, state.glfw_texture);
-    glUseProgram(program);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-
-    // gui
-    nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE |
-                     NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE;
-    if (nk_begin(nk_ctx, "Rares UI", nk_rect(50, 50, 640, 360), flags))
-    {
-      nk_layout_row_static(nk_ctx, 30, 80, 1);
-      if (nk_button_label(nk_ctx, "button"))
-        Log("Pressed button lol", "");
-    }
-    nk_end(nk_ctx);
-
-    nk_glfw3_render(&nk_glfw, NK_ANTI_ALIASING_OFF, 512 * 1024, 128 * 1024);
-    glfwSwapBuffers(state.window);
   }
 
   glDeleteShader(vs);
