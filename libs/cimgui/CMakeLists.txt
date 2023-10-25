@@ -33,3 +33,6 @@ target_include_directories(cimgui PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/output"
 )
+
+target_include_directories(cimgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../glfw/include")
+target_link_libraries(cimgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../../bin/libs/glfw/src/glfw3.lib")

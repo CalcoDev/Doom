@@ -1,7 +1,11 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define DEBUG 1
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+#define tn_debug 1
 
 #define bytes(n)     n
 #define kilobytes(n) n << 10
@@ -33,32 +37,34 @@ typedef double f64;
 #endif
 
 
-#ifdef DEBUG
-#  define flush fflush(stdout)
-#  define trace Statement(printf("%s:%d: Trace\n", FILE_NAME, __LINE__); flush;)
-#  define unreachable Statement(\
-printf("How did we get here? In %s on line %d\n", FILE_NAME, __LINE__);\
-flush;
-#  define log(format, ...)                                                     \
-    statement(printf("Info: "); printf(format, ##__VA_ARGS__); printf("\n");   \
-              flush;)
-#  define logerr(format, ...)                                                \
-    statement(printf("%s:%d: Error: ", FILE_NAME, __LINE__);                   \
-              printf(format, ##__VA_ARGS__); printf("\n"); flush;)
-#  define logfatal(format, ...)                                                \
-    statement(printf("%s:%d: Error: ", FILE_NAME, __LINE__);                   \
-              printf(format, ##__VA_ARGS__); printf("\n"); flush; exit(-1);)
-#  define assert(c, format, ...)                                           \
-    statement(if (!(c)) {                                                      \
-      printf("%s:%d: Error: ", FILE_NAME, __LINE__);                           \
-      printf("Assertion Failure: ");                                           \
-      printf(format, ##__VA_ARGS__);                                           \
-      printf("\n");                                                            \
-    })
+#ifdef tn_debug
+#define tn_assert(expr, format, ...) do { \
+    if (!(expr)) { \
+        fprintf(stderr, "Assertion failed: %s, File: %s, Line: %d\n", #expr, __FILE__, __LINE__); \
+        fprintf(stderr, format, ##__VA_ARGS__); \
+        exit(EXIT_FAILURE); \
+    } \
+} while (0)
+#define tn_log(format, ...) do { \
+    fprintf(stdout, "Info: %s, File: %s, Line: %d\n", __func__, __FILE__, __LINE__); \
+    fprintf(stdout, format, ##__VA_ARGS__); \
+    fprintf(stdout, "\n"); \
+} while (0)
+#define tn_logerr(format, ...) do { \
+    fprintf(stderr, "Error: %s, File: %s, Line: %d\n", __func__, __FILE__, __LINE__); \
+    fprintf(stderr, format, ##__VA_ARGS__); \
+    fprintf(stderr, "\n"); \
+} while (0)
+#define tn_logfatal(format, ...) do { \
+    fprintf(stderr, "Fatal Error: %s, File: %s, Line: %d\n", __func__, __FILE__, __LINE__); \
+    fprintf(stderr, format, ##__VA_ARGS__); \
+    fprintf(stderr, "\n"); \
+    exit(EXIT_FAILURE); \
+} while (0)
 #else
-#  define log(format, ...)            Statement()
-#  define logerr(format, ...)       Statement()
-#  define logfatal(format, ...)       Statement()
-#  define assert(c, format, ...)  Statement()
+#define tn_assert(expr, format, ...) do { (void)0; } while (0)
+#define tn_log(format, ...) do { (void)0; } while (0)
+#define tn_logerr(format, ...) do { (void)0; } while (0)
+#define tn_logfatal(format, ...) do { (void)0; } while (0)
 #endif
 #endif

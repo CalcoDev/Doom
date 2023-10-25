@@ -1,7 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include <glfw/glfw3.h>
+#include "cimgui_include.h"
 #include "defines.h"
 #include "math.h"
 
@@ -41,17 +41,17 @@ typedef struct State
 } State;
 State state;
 
-void game_init();
-void game_update();
-void game_debug_ui();
-void game_free();
+void game_init(void);
+void game_update(void);
+void game_debug_ui(void);
+void game_free(void);
 
 b8 GetKeyPressed(u16 key);
 b8 GetKeyReleased(u16 key);
 b8 GetKeyDown(u16 key);
 b8 GetKeyUp(u16 key);
 
-void ClearPixels();
+void ClearPixels(void);
 void SetPixel(u32 x, u32 y, u32 colour);
 
 #endif

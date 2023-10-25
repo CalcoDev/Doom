@@ -1,15 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#include <glad/glad.h>
-#define GLFW_INCLUDE_NONE
-#include <glfw/glfw3.h>
-
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#define CIMGUI_USE_GLFW
-#define CIMGUI_USE_OPENGL3
-#include <cimgui.h>
-#include <cimgui_impl.h>
+#include "cimgui_include.h"
 
 #include "defines.h"
 #include "math.h"
@@ -22,9 +14,9 @@ void GLFWKeyCallback(
   state.curr_keys[key] = action == GLFW_PRESS;
 }
 
-int main()
+int main(void)
 {
-  assert(glfwInit() != 0, "Failed to initialize glfw.", "");
+  tn_assert(glfwInit() != 0, "Failed to initialize glfw.");
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -32,7 +24,7 @@ int main()
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); // Mac
 
   state.window = glfwCreateWindow(WINDOW_W, WINDOW_H, "Doom", NULL, NULL);
-  assert(state.window != NULL, "Failed to create window!", "");
+  tn_assert(state.window != NULL, "Failed to create window!");
   glfwSetKeyCallback(state.window, GLFWKeyCallback);
 
   glfwMakeContextCurrent(state.window);
@@ -43,14 +35,14 @@ int main()
   ImGuiIO* io = igGetIO();
   io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-  assert(
+  tn_assert(
       ImGui_ImplGlfw_InitForOpenGL(state.window, 1) != 0,
-      "Failed to initialize imgui for glfw & opengl.", ""
+      "Failed to initialize imgui for glfw & opengl."
   );
 
-  assert(
+  tn_assert(
       ImGui_ImplOpenGL3_Init("#version 330 core") != 0,
-      "Failed to initialize imgui for opengl.", ""
+      "Failed to initialize imgui for opengl."
   );
 
   igStyleColorsDark(NULL);

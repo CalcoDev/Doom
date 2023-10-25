@@ -30,3 +30,9 @@ build
 .idea/*
 .idea/**
 .idea
+
+.bin/
+.bin
+.bin/**
+
+bin
