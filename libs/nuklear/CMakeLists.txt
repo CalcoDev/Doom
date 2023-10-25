@@ -11,7 +11,7 @@ file(
 )
 
 add_library(nuklear STATIC "${sources}")
-target_include_directories(nuklear PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(nuklear PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # add_library(nuklear "include/glad/glad.h" "src/glad.c")
 # target_include_directories(nuklear PUBLIC "include/")
