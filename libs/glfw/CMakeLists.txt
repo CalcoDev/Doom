@@ -92,9 +92,11 @@ if (MSVC AND NOT USE_MSVC_RUNTIME_LIBRARY_DLL)
                       CMAKE_C_FLAGS_RELWITHDEBINFO)
 
             if (flag MATCHES "/MD")
+                message("REPLACING THE SHIT")
                 string(REGEX REPLACE "/MD" "/MT" ${flag} "${${flag}}")
             endif()
             if (flag MATCHES "/MDd")
+                message("REPLACING THE OTHER SHIT")
                 string(REGEX REPLACE "/MDd" "/MTd" ${flag} "${${flag}}")
             endif()
 
