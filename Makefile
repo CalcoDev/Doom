@@ -4,8 +4,8 @@ SRC_LIB_DIR = libs
 OBJ_DIR = $(BIN)/obj
 OBJ_LIB_DIR = $(BIN)/libs
 
-CC = clang
-CFLAGS = -std=c11 -O3 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing 
+CC = clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0
+CFLAGS = -Wall -Wextra -Wpedantic -Wstrict-aliasing 
 CFLAGS += -Wno-newline-eof -Wno-gnu-zero-variadic-macro-arguments \
 	-Wno-unused-parameter
 CFLAGS += -I$(SRC_LIB_DIR)/glad/include \
