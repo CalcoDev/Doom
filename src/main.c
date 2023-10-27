@@ -109,6 +109,8 @@ int main(void)
 
   ImGuiIO* io = igGetIO();
   io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  io->IniFilename = NULL;
+  io->LogFilename = NULL;
 
   tn_assert(
       ImGui_ImplGlfw_InitForOpenGL(state.window, 1) != 0,
