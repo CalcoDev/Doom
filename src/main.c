@@ -7,86 +7,12 @@
 #include "math.h"
 #include "game.h"
 
-State state;
-
-void game_init(void);
-void game_update(void);
-void game_debug_ui(void);
-void game_free(void);
-
-b8 GetKeyPressed(u16 key);
-b8 GetKeyReleased(u16 key);
-b8 GetKeyDown(u16 key);
-b8 GetKeyUp(u16 key);
-
-void ClearPixels(void);
-void SetPixel(u32 x, u32 y, u32 colour);
-
-const static u8 MAP_DATA[MAP_W * MAP_H] = {
-    1, 1, 1, 1, 1, 1, 1, 1, //
-    1, 0, 0, 0, 5, 0, 0, 1, //
-    1, 0, 2, 2, 0, 3, 0, 1, //
-    1, 0, 3, 0, 0, 4, 0, 1, //
-    1, 0, 0, 0, 0, 0, 0, 1, //
-    1, 0, 0, 0, 0, 0, 0, 1, //
-    1, 0, 0, 0, 0, 0, 0, 1, //
-    1, 1, 1, 1, 1, 1, 1, 1, //
-};
-
-void game_init(void)
-{
-  state.pos = (v2f){MAP_W / 2, MAP_H / 2};
-  state.look_dir = (v2f){-1, 0};
-  state.plane = (v2f){0, 0.66};
-}
-
-void game_update(void)
-{
-  if (GetKeyPressed(GLFW_KEY_F3))
-    state.show_debug_ui = !state.show_debug_ui;
-
-  ClearPixels();
-}
-
-void game_debug_ui(void)
-{
-  igBegin("Debug Window", NULL, 0);
-  igEnd();
-}
-
-void game_free(void) 
-{
-
-}
-
-b8 GetKeyPressed(u16 key)
-{
-  return state.curr_keys[key] && !state.prev_keys[key];
-}
-b8 GetKeyReleased(u16 key)
-{
-  return !state.curr_keys[key] && state.prev_keys[key];
-}
-b8 GetKeyDown(u16 key) { return state.curr_keys[key]; }
-b8 GetKeyUp(u16 key) { return !state.curr_keys[key]; }
-
-void ClearPixels(void)
-{
-  for (u32 i = 0; i < VIEWPORT_W * VIEWPORT_H; ++i)
-    state.pixels[i] = 0x00000000;
-}
-
-void SetPixel(u32 x, u32 y, u32 colour)
-{
-  state.pixels[y * VIEWPORT_W + x] = colour;
-}
-
-
 void GLFWKeyCallback(
     GLFWwindow* window, int key, int scancode, int action, int mods
 )
 {
-  state.curr_keys[key] = action == GLFW_PRESS;
+  State* state = (State*) glfwGetWindowUserPointer(window);
+  state->curr_keys[key] = action == GLFW_PRESS;
 }
 
 int main(void)
@@ -98,14 +24,18 @@ int main(void)
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); // Mac
 
-  state.window = glfwCreateWindow(WINDOW_W, WINDOW_H, "Doom", NULL, NULL);
-  tn_assert(state.window != NULL, "Failed to create window!");
-  glfwSetKeyCallback(state.window, GLFWKeyCallback);
+  State* state = game_get();
 
-  glfwMakeContextCurrent(state.window);
+  state->window = glfwCreateWindow(WINDOW_W, WINDOW_H, "Doom", NULL, NULL);
+  tn_assert(state->window != NULL, "Failed to create window!");
+  glfwSetKeyCallback(state->window, GLFWKeyCallback);
+
+  glfwSetWindowUserPointer(state->window, state);
+
+  glfwMakeContextCurrent(state->window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-  state.imgui_ctx = igCreateContext(NULL);
+  state->imgui_ctx = igCreateContext(NULL);
 
   ImGuiIO* io = igGetIO();
   io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -113,7 +43,7 @@ int main(void)
   io->LogFilename = NULL;
 
   tn_assert(
-      ImGui_ImplGlfw_InitForOpenGL(state.window, 1) != 0,
+      ImGui_ImplGlfw_InitForOpenGL(state->window, 1) != 0,
       "Failed to initialize imgui for glfw & opengl."
   );
 
@@ -152,38 +82,38 @@ int main(void)
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(f32), (void*)0);
   glEnableVertexAttribArray(0);
 
-  glGenTextures(1, &state.glfw_texture);
-  glBindTexture(GL_TEXTURE_2D, state.glfw_texture);
+  glGenTextures(1, &state->glfw_texture);
+  glBindTexture(GL_TEXTURE_2D, state->glfw_texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage2D(
       GL_TEXTURE_2D, 0, GL_RGBA, VIEWPORT_W, VIEWPORT_H, 0, GL_RGBA,
-      GL_UNSIGNED_BYTE, &state.pixels[0]
+      GL_UNSIGNED_BYTE, &state->pixels[0]
   );
 
   glUseProgram(program);
 
   game_init();
-  while (!glfwWindowShouldClose(state.window))
+  while (!glfwWindowShouldClose(state->window))
   {
-    state.curr_time = glfwGetTime();
+    state->curr_time = glfwGetTime();
 
     // Limit update FPS
-    if (state.curr_time - state.prev_time > FRAMERATE)
+    if (state->curr_time - state->prev_time > FRAMERATE)
     {
       for (u32 i = 0; i < GLFW_KEY_LAST; ++i)
-        state.prev_keys[i] = state.curr_keys[i];
+        state->prev_keys[i] = state->curr_keys[i];
 
       glfwPollEvents();
       if (GetKeyPressed(GLFW_KEY_ESCAPE))
-        glfwSetWindowShouldClose(state.window, 1);
+        glfwSetWindowShouldClose(state->window, 1);
 
       game_update();
       glTexSubImage2D(
           GL_TEXTURE_2D, 0, 0, 0, VIEWPORT_W, VIEWPORT_H, GL_RGBA,
-          GL_UNSIGNED_BYTE, &state.pixels[0]
+          GL_UNSIGNED_BYTE, &state->pixels[0]
       );
 
       glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -193,7 +123,7 @@ int main(void)
       ImGui_ImplOpenGL3_NewFrame();
       igNewFrame();
 
-      if (state.show_debug_ui)
+      if (state->show_debug_ui)
       {
         game_debug_ui();
       }
@@ -201,9 +131,9 @@ int main(void)
       igRender();
       ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
 
-      glfwSwapBuffers(state.window);
+      glfwSwapBuffers(state->window);
 
-      state.prev_time = state.curr_time;
+      state->prev_time = state->curr_time;
     }
   }
 

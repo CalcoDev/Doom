@@ -40,4 +40,19 @@ typedef struct State
   v2f plane;
 } State;
 
+State* game_get(void);
+
+void game_init(void);
+void game_update(void);
+void game_debug_ui(void);
+void game_free(void);
+
+b8 GetKeyPressed(u16 key);
+b8 GetKeyReleased(u16 key);
+b8 GetKeyDown(u16 key);
+b8 GetKeyUp(u16 key);
+
+void ClearPixels(void);
+void SetPixel(u32 x, u32 y, u32 colour);
+
 #endif
