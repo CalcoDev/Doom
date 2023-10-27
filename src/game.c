@@ -18,7 +18,7 @@ const static u8 MAP_DATA[MAP_W * MAP_H] = {
 
 const static u32 COLOUR_DATA[4] = {
   0xFF2b2b2b,
-  0xFF000000,
+  0xFF03bafc,
   0xFFa83240,
   0xFFa8327f
 };
@@ -29,25 +29,6 @@ static f32 PLAYER_SPEED = 1.f;
 State state;
 b8 topdown_view;
 b8 rendering_visible;
-
-/// FOR DEBUG
-void dbg_draw_line_dda(u32 x0, u32 y0, u32 x1, u32 y1, u32 colour)
-{
-  i32 dx = x1 - x0;
-  i32 dy = y1 - y0;
-  i32 steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
-  f64 xIncrement = (f64)dx / (f64)steps;
-  f64 yIncrement = (f64)dy / (f64)steps;
-  f64 x = (f64)x0;
-  f64 y = (f64)y0;
-
-  for (i32 i = 0; i <= steps; i++) {
-      SetPixel((u32)x, (u32)y, colour);
-      x += xIncrement;
-      y += yIncrement;
-  }
-}
-///
 
 u32 map_to_viewport_x(f32 world) 
 { 
@@ -68,6 +49,33 @@ u32 viewport_to_map_y(f32 viewport)
 { 
   return (u32)(viewport / VIEWPORT_H * MAP_H);
 }
+
+/// FOR DEBUG
+void dbg_draw_line_dda(u32 x0, u32 y0, u32 x1, u32 y1, u32 colour)
+{
+  i32 dx = x1 - x0;
+  i32 dy = y1 - y0;
+  i32 steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+  f64 xIncrement = (f64)dx / (f64)steps;
+  f64 yIncrement = (f64)dy / (f64)steps;
+  f64 x = (f64)x0;
+  f64 y = (f64)y0;
+
+  for (i32 i = 0; i <= steps; i++) {
+      // SetPixel((u32)x, (u32)y, colour);
+      u32 mx = viewport_to_map_x((f32)x);
+      u32 my = viewport_to_map_y((f32)y);
+      u32 wall = MAP_DATA[my * MAP_W + mx];
+      if (wall != 0) {
+        SetPixel((u32)x, (u32)y, COLOUR_DATA[wall]);
+        break;
+      }
+
+      x += xIncrement;
+      y += yIncrement;
+  }
+}
+///
 
 State* game_get(void)
 {
@@ -138,7 +146,7 @@ void game_update(void)
 
       const f32 scl = 100;
       v2f ray_dir = {cosf(ray_angle) * scl, -sinf(ray_angle) * scl};
-      // dbg_draw_line_dda(pos.x, pos.y, pos.x + ray_dir.x, pos.y + ray_dir.y, 0xFFFFFFFF);
+      dbg_draw_line_dda(pos.x, pos.y, pos.x + ray_dir.x, pos.y + ray_dir.y, 0xFFFFFFFF);
 
       // Now we want to do DDA and figure out if collisions happen.
     }
@@ -191,8 +199,13 @@ void game_debug_ui(void)
       // igInputFloat2("Forward Direction", state.player.forward.v, "%.2f", 
       //   ImGuiInputTextFlags_None);
 
-      igSliderFloat("Forward Angle", &state.player.forward_angle, 
+igBeginColumns("r_header", 2, ImGuiOldColumnFlags_NoResize | ImGuiOldColumnFlags_NoBorder | ImGuiOldColumnFlags_GrowParentContentsSize);
+      igSliderFloat("FOV", &state.player.fov, 
         0.f, f_PI * 2.f, "%.4f", ImGuiInputTextFlags_None);
+igNextColumn();
+igSliderFloat("Forward Angle", &state.player.forward_angle, 
+        0.f, f_PI * 2.f, "%.4f", ImGuiInputTextFlags_None);
+igEndColumns();
     }
     igUnindent(0);
   }
