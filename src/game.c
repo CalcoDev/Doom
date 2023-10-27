@@ -1,56 +1,153 @@
 #include "game.h"
 
+#include "defines.h"
+
 const static u8 MAP_DATA[MAP_W * MAP_H] = {
-    1, 1, 1, 1, 1, 1, 1, 1, //
-    1, 0, 0, 0, 5, 0, 0, 1, //
-    1, 0, 2, 2, 0, 3, 0, 1, //
-    1, 0, 3, 0, 0, 4, 0, 1, //
-    1, 0, 0, 0, 0, 0, 0, 1, //
-    1, 0, 0, 0, 0, 0, 0, 1, //
-    1, 0, 0, 0, 0, 0, 0, 1, //
-    1, 1, 1, 1, 1, 1, 1, 1, //
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+    1, 0, 3, 0, 0, 0, 2, 2, 2, 0, 0, 0, 3, 0, 0, 1,
+    1, 0, 3, 0, 0, 2, 2, 0, 2, 0, 3, 3, 3, 0, 0, 1,
+    1, 0, 3, 0, 0, 0, 2, 0, 2, 0, 0, 0, 3, 0, 0, 1,
+    1, 0, 3, 0, 0, 0, 0, 0, 2, 0, 0, 3, 3, 3, 0, 1,
+    1, 0, 0, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 3, 0, 1,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
+const static u32 COLOUR_DATA[4] = {
+  0xFF2b2b2b,
+  0xFF000000,
+  0xFFa83240,
+  0xFFa8327f
+};
+
+const static u32 PLAYER_COLOUR = 0xFF0000FF;
+static f32 PLAYER_SPEED = 0.1f;
+
 State state;
+b8 topdown_view;
+
+b8 rendering_visible;
 
 State* game_get(void)
 {
   return &state;
 }
 
-void game_init()
+void game_init(void)
 {
   state.pos = (v2f){MAP_W / 2, MAP_H / 2};
-  state.look_dir = (v2f){-1, 0};
+  state.look_dir = (v2f){0, -1};
   state.plane = (v2f){0, 0.66};
 }
 
-void game_update()
+void game_update(void)
 {
   if (GetKeyPressed(GLFW_KEY_F3))
     state.show_debug_ui = !state.show_debug_ui;
-
+  
+  if (GetKeyDown(GLFW_KEY_A))
+    state.pos.x -= PLAYER_SPEED;
+  if (GetKeyDown(GLFW_KEY_D))
+    state.pos.x += PLAYER_SPEED;
+  if (GetKeyDown(GLFW_KEY_W))
+    state.pos.y -= PLAYER_SPEED;
+  if (GetKeyDown(GLFW_KEY_S))
+    state.pos.y += PLAYER_SPEED;
+  
+  if (state.pos.x < 0.f)
+    state.pos.x = 0.f;
+  if (state.pos.y < 0.f)
+    state.pos.y = 0.f;
+  if (state.pos.x >= MAP_W)
+    state.pos.x = MAP_W - 0.001f;
+  if (state.pos.y >= MAP_H)
+    state.pos.y = MAP_H - 0.001f;
+  
   ClearPixels();
+  if (topdown_view)
+  {
+    for (u32 y = 0; y < VIEWPORT_H; ++y)
+    {
+      for (u32 x = 0; x < VIEWPORT_W; ++x)
+      {
+        u32 map_x = (u32)((f32)x / VIEWPORT_W * MAP_W);
+        u32 map_y = (u32)((f32)y / VIEWPORT_H * MAP_H);
+        u32 idx = map_y * MAP_W + map_x;
+        u32 col = MAP_DATA[idx];
+        SetPixel(x, y, COLOUR_DATA[col]);
+      }
+    }
+
+    u32 px = (u32)(state.pos.x / MAP_W * VIEWPORT_W);
+    u32 py = (u32)(state.pos.y / MAP_H * VIEWPORT_H);
+    SetPixel(px, py, PLAYER_COLOUR);
+  }
+  else 
+  {
+  }
 }
 
-void game_debug_ui()
+void game_debug_ui(void)
 {
-  igBegin("Debug Window", NULL, 0);
+  igBegin("Debug Window", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+
+  igText("Sample debugging menu. \nWill be updated later.");
+  
+  ImGuiTreeNodeFlags tflags = ImGuiTreeNodeFlags_UpsideDownArrow 
+    | ImGuiTreeNodeFlags_DefaultOpen 
+    | ImGuiTreeNodeFlags_FramePadding;
+  if (igCollapsingHeader_TreeNodeFlags("Rendering Info", tflags))
+  {
+    igIndent(0);
+
+    {
+      igBeginColumns("r_header", 2, ImGuiOldColumnFlags_NoResize | ImGuiOldColumnFlags_NoBorder | ImGuiOldColumnFlags_GrowParentContentsSize);
+      igText("Framerate");
+      igSameLine(0, -1);
+      igText("%.2f", 1.f / (state.curr_time - state.prev_time));
+
+      igNextColumn();
+      igText("Time Passed");
+      igSameLine(0, -1);
+      igText("%.2f", state.curr_time);
+      igEndColumns();
+    }
+
+    // Render options
+    {
+      igCheckbox("Top Down View", &topdown_view);
+    }
+
+    igUnindent(0);
+  }
+
+  if (igCollapsingHeader_TreeNodeFlags("Player Info", tflags))
+  {
+    igIndent(0);
+    {
+      igInputFloat("Move Speed", &PLAYER_SPEED, 0.001f, 0.001f, "%.3f", ImGuiInputTextFlags_None);
+    }
+    igUnindent(0);
+  }
+
   igEnd();
 }
 
-void game_free() 
+void game_free(void) 
 {
 
 }
 
-void ClearPixels()
+void ClearPixels(void)
 {
   for (u32 i = 0; i < VIEWPORT_W * VIEWPORT_H; ++i)
     state.pixels[i] = 0x00000000;
 }
 void SetPixel(u32 x, u32 y, u32 colour)
 {
+  // Invert y
+  y = VIEWPORT_H - 1 - y;
   state.pixels[y * VIEWPORT_W + x] = colour;
 }
 

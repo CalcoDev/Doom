@@ -12,8 +12,8 @@
 #define VIEWPORT_W 320
 #define VIEWPORT_H 180
 
-#define MAP_W 8
-#define MAP_H 8
+#define MAP_W 16
+#define MAP_H 9
 
 typedef struct State
 {

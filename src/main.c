@@ -12,7 +12,7 @@ void GLFWKeyCallback(
 )
 {
   State* state = (State*) glfwGetWindowUserPointer(window);
-  state->curr_keys[key] = action == GLFW_PRESS;
+  state->curr_keys[key] = action == GLFW_PRESS || action == GLFW_REPEAT;
 }
 
 int main(void)
