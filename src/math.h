@@ -33,4 +33,8 @@ typedef struct v2u
 #define v2_u(a) (v2u){(u32)(a.x), (u32)(a.y)}
 #define v2_f(a) (v2f){(f32)(a.x), (f32)(a.y)}
 
+#define f_PI 3.1415926535f
+#define f_deg_to_rad(degrees) ((degrees) * (f_PI / 180.f))
+#define f_rad_to_deg(radians) ((radians) * (180.f/ f_PI))
+
 #endif

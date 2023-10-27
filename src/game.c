@@ -4,13 +4,6 @@
 #include "math.h"
 #include "defines.h"
 
-#define min(a, b) ({ __typeof__(a) _a = (a), _b = (b); _a < _b ? _a : _b; })
-#define max(a, b) ({ __typeof__(a) _a = (a), _b = (b); _a > _b ? _a : _b; })
-#define sign(a) ({                                       \
-        __typeof__(a) _a = (a);                          \
-        (__typeof__(a))(_a < 0 ? -1 : (_a > 0 ? 1 : 0)); \
-    })
-
 const static u8 MAP_DATA[MAP_W * MAP_H] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
@@ -35,7 +28,6 @@ static f32 PLAYER_SPEED = 1.f;
 
 State state;
 b8 topdown_view;
-
 b8 rendering_visible;
 
 u32 map_to_viewport_x(f32 world) 
@@ -65,14 +57,9 @@ State* game_get(void)
 
 void game_init(void)
 {
-  state.pos = (v2f){VIEWPORT_W / 2, VIEWPORT_H / 2};
-  state.look_dir = (v2f){0, -15};
-  state.plane = (v2f){15, 15};
-}
-
-void verline(u32 x, u32 y0, u32 y1, u32 colour) {
-  for (u32 y = y0; y <= y1; y++)
-    SetPixel(x, y, colour);
+  state.player.pos = (v2f){VIEWPORT_W / 2, VIEWPORT_H / 2};
+  state.player.forward = (v2f){0, 16};
+  state.player.fov = f_deg_to_rad(90);
 }
 
 void game_update(void)
@@ -81,22 +68,22 @@ void game_update(void)
     state.show_debug_ui = !state.show_debug_ui;
   
   if (GetKeyDown(GLFW_KEY_A))
-    state.pos.x -= PLAYER_SPEED;
+    state.player.pos.x -= PLAYER_SPEED;
   if (GetKeyDown(GLFW_KEY_D))
-    state.pos.x += PLAYER_SPEED;
+    state.player.pos.x += PLAYER_SPEED;
   if (GetKeyDown(GLFW_KEY_W))
-    state.pos.y -= PLAYER_SPEED;
+    state.player.pos.y -= PLAYER_SPEED;
   if (GetKeyDown(GLFW_KEY_S))
-    state.pos.y += PLAYER_SPEED;
+    state.player.pos.y += PLAYER_SPEED;
   
-  if (state.pos.x < 0.f)
-    state.pos.x = 0.f;
-  if (state.pos.y < 0.f)
-    state.pos.y = 0.f;
-  if (state.pos.x >= VIEWPORT_W)
-    state.pos.x = VIEWPORT_W - 0.001f;
-  if (state.pos.y >= VIEWPORT_H)
-    state.pos.y = VIEWPORT_H - 0.001f;
+  if (state.player.pos.x < 0.f)
+    state.player.pos.x = 0.f;
+  if (state.player.pos.y < 0.f)
+    state.player.pos.y = 0.f;
+  if (state.player.pos.x >= VIEWPORT_W)
+    state.player.pos.x = VIEWPORT_W - 0.001f;
+  if (state.player.pos.y >= VIEWPORT_H)
+    state.player.pos.y = VIEWPORT_H - 0.001f;
   
   ClearPixels();
   if (topdown_view)
@@ -112,7 +99,7 @@ void game_update(void)
     }
 
     // Draw player
-    SetPixel(state.pos.x, state.pos.y, PLAYER_COLOUR);
+    SetPixel(state.player.pos.x, state.player.pos.y, PLAYER_COLOUR);
   }
   else 
   {
@@ -160,9 +147,10 @@ void game_debug_ui(void)
   {
     igIndent(0);
     {
-      igInputFloat("Move Speed", &PLAYER_SPEED, 0.1f, 1.f, "%.2f", ImGuiInputTextFlags_None);
-      igInputFloat2("Look Direction", state.look_dir.v, "%.2f", ImGuiInputTextFlags_None);
-      igInputFloat2("Screen Plane Offset", state.plane.v, "%.2f", ImGuiInputTextFlags_None);
+      igInputFloat("Move Speed", &PLAYER_SPEED, 0.1f, 1.f, "%.2f", 
+        ImGuiInputTextFlags_None);
+      igInputFloat2("Look Direction", state.player.forward.v, "%.2f", 
+        ImGuiInputTextFlags_None);
     }
     igUnindent(0);
   }
@@ -185,7 +173,6 @@ void SetPixel(u32 x, u32 y, u32 colour)
   if (x < 0 || y < 0 || x >= VIEWPORT_W || y >= VIEWPORT_H)
     return;
 
-  // Invert y
   y = VIEWPORT_H - 1 - y;
   state.pixels[y * VIEWPORT_W + x] = colour;
 }

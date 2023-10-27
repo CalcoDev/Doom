@@ -35,9 +35,11 @@ typedef struct State
   b8 curr_keys[GLFW_KEY_LAST];
 
   // Game
-  v2f pos;
-  v2f look_dir;
-  v2f plane;
+  struct Player {
+    v2f pos;
+    v2f forward;
+    f32 fov;
+  } player;
 } State;
 
 State* game_get(void);
