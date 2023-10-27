@@ -1,5 +1,7 @@
 #include "game.h"
 
+#include <math.h>
+#include "math.h"
 #include "defines.h"
 
 const static u8 MAP_DATA[MAP_W * MAP_H] = {
@@ -22,12 +24,32 @@ const static u32 COLOUR_DATA[4] = {
 };
 
 const static u32 PLAYER_COLOUR = 0xFF0000FF;
-static f32 PLAYER_SPEED = 0.1f;
+static f32 PLAYER_SPEED = 1.f;
 
 State state;
 b8 topdown_view;
 
 b8 rendering_visible;
+
+u32 map_to_viewport_x(f32 world) 
+{ 
+  return (u32)(world / MAP_W * VIEWPORT_W);
+}
+
+u32 map_to_viewport_y(f32 world) 
+{ 
+  return (u32)(world / MAP_H * VIEWPORT_H);
+}
+
+u32 viewport_to_map_x(f32 viewport) 
+{ 
+  return (u32)(viewport / VIEWPORT_W * MAP_W);
+}
+
+u32 viewport_to_map_y(f32 viewport) 
+{ 
+  return (u32)(viewport / VIEWPORT_H * MAP_H);
+}
 
 State* game_get(void)
 {
@@ -36,9 +58,55 @@ State* game_get(void)
 
 void game_init(void)
 {
-  state.pos = (v2f){MAP_W / 2, MAP_H / 2};
-  state.look_dir = (v2f){0, -1};
-  state.plane = (v2f){0, 0.66};
+  state.pos = (v2f){VIEWPORT_W / 2, VIEWPORT_H / 2};
+  state.look_dir = (v2f){0, -15};
+  state.plane = (v2f){0, 15};
+}
+
+void draw_line_dda(u32 x0, u32 y0, u32 x1, u32 y1, u32 colour)
+{
+  i32 dx = x1 - x0;
+  i32 dy = y1 - y0;
+  i32 steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+  f64 xIncrement = (f64)dx / (f64)steps;
+  f64 yIncrement = (f64)dy / (f64)steps;
+  f64 x = (f64)x0;
+  f64 y = (f64)y0;
+
+  for (i32 i = 0; i <= steps; i++) {
+      SetPixel((u32)x, (u32)y, colour);
+      x += xIncrement;
+      y += yIncrement;
+  }
+}
+
+void shoot_ray(u32 x0, u32 y0, f32 dx, f32 dy)
+{
+  i32 steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+  f64 xIncrement = dx / (f64)steps;
+  f64 yIncrement = dy / (f64)steps;
+  f64 x = (f64)x0;
+  f64 y = (f64)y0;
+
+  while (true)
+  {
+    u32 mx = viewport_to_map_x(x);
+    u32 my = viewport_to_map_y(y);
+    
+    b8 hit_wall = MAP_DATA[my * MAP_W + mx] != 0;
+    b8 in_bounds = x >= 0 && y >= 0 && mx < MAP_W && my < MAP_H;
+    if (hit_wall || !in_bounds)
+    {
+      x0 = (u32)x;
+      y0 = (u32)y;
+      break;
+    }
+
+    x += xIncrement;
+    y += yIncrement;
+  }
+
+  SetPixel(x0, y0, 0xFFFFFF);
 }
 
 void game_update(void)
@@ -59,10 +127,10 @@ void game_update(void)
     state.pos.x = 0.f;
   if (state.pos.y < 0.f)
     state.pos.y = 0.f;
-  if (state.pos.x >= MAP_W)
-    state.pos.x = MAP_W - 0.001f;
-  if (state.pos.y >= MAP_H)
-    state.pos.y = MAP_H - 0.001f;
+  if (state.pos.x >= VIEWPORT_W)
+    state.pos.x = VIEWPORT_W - 0.001f;
+  if (state.pos.y >= VIEWPORT_H)
+    state.pos.y = VIEWPORT_H - 0.001f;
   
   ClearPixels();
   if (topdown_view)
@@ -71,20 +139,55 @@ void game_update(void)
     {
       for (u32 x = 0; x < VIEWPORT_W; ++x)
       {
-        u32 map_x = (u32)((f32)x / VIEWPORT_W * MAP_W);
-        u32 map_y = (u32)((f32)y / VIEWPORT_H * MAP_H);
-        u32 idx = map_y * MAP_W + map_x;
+        u32 idx = viewport_to_map_y(y) * MAP_W + viewport_to_map_x(x);
         u32 col = MAP_DATA[idx];
         SetPixel(x, y, COLOUR_DATA[col]);
       }
     }
 
-    u32 px = (u32)(state.pos.x / MAP_W * VIEWPORT_W);
-    u32 py = (u32)(state.pos.y / MAP_H * VIEWPORT_H);
-    SetPixel(px, py, PLAYER_COLOUR);
+    // Raycasting
+    {
+      v2u p = v2_u(state.pos);
+      v2i o = v2_i(state.look_dir);
+      v2i l = v2_i(state.plane);
+
+      for (i32 deg = 0; deg < 360; ++deg)
+      {
+        f32 rad = deg * 3.14159265 / 180.f;
+        f32 offx = cosf(rad) * 1.01;
+        f32 offy = sinf(rad) * 1.01;
+        shoot_ray(p.x, p.y, offx, offy);
+      }
+
+      // for (i32 f = -l.x; f < l.x; ++f)
+      //   shoot_ray(p.x, p.y, p.x + o.x + f, p.y + o.y);
+    }
+
+    // Draw player
+    SetPixel(state.pos.x, state.pos.y, PLAYER_COLOUR);
   }
   else 
   {
+    // Raycasting
+    // Line algorithm for now
+
+    // Draw a grid for debug
+    u32 y_inc = VIEWPORT_H / 9;
+    u32 x_inc = VIEWPORT_W / 16;
+    for (u32 y = 0; y < VIEWPORT_H; y += y_inc)
+      for (u32 x = 0; x < VIEWPORT_W; x += 1)
+        SetPixel(x, y, 0xFF4b4b4b);
+    
+    for (u32 x = 0; x < VIEWPORT_W; x += x_inc)
+      for (u32 y = 0; y < VIEWPORT_H; y += 1)
+        SetPixel(x, y, 0xFF4b4b4b);
+
+    // Line
+    u32 x0 = 160, y0 = 90;
+    u32 x1 = 260, y1 = 30;
+    draw_line_dda(x0, y0, x1, y1, 0xFF0000FF);
+    SetPixel(x0, y0, 0xFF00FF00);
+    SetPixel(x1, y1, 0xFF00FF00);
   }
 }
 
@@ -126,7 +229,9 @@ void game_debug_ui(void)
   {
     igIndent(0);
     {
-      igInputFloat("Move Speed", &PLAYER_SPEED, 0.001f, 0.001f, "%.3f", ImGuiInputTextFlags_None);
+      igInputFloat("Move Speed", &PLAYER_SPEED, 0.1f, 1.f, "%.2f", ImGuiInputTextFlags_None);
+      igInputFloat2("Look Direction", state.look_dir.v, "%.2f", ImGuiInputTextFlags_None);
+      igInputFloat2("Screen Plane Offset", state.plane.v, "%.2f", ImGuiInputTextFlags_None);
     }
     igUnindent(0);
   }
@@ -146,6 +251,9 @@ void ClearPixels(void)
 }
 void SetPixel(u32 x, u32 y, u32 colour)
 {
+  if (x < 0 || y < 0 || x >= VIEWPORT_W || y >= VIEWPORT_H)
+    return;
+
   // Invert y
   y = VIEWPORT_H - 1 - y;
   state.pixels[y * VIEWPORT_W + x] = colour;
