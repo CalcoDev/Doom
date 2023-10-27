@@ -37,7 +37,7 @@ typedef struct State
   // Game
   struct Player {
     v2f pos;
-    v2f forward;
+    f32 forward_angle;
     f32 fov;
   } player;
 } State;

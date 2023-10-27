@@ -30,6 +30,25 @@ State state;
 b8 topdown_view;
 b8 rendering_visible;
 
+/// FOR DEBUG
+void dbg_draw_line_dda(u32 x0, u32 y0, u32 x1, u32 y1, u32 colour)
+{
+  i32 dx = x1 - x0;
+  i32 dy = y1 - y0;
+  i32 steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+  f64 xIncrement = (f64)dx / (f64)steps;
+  f64 yIncrement = (f64)dy / (f64)steps;
+  f64 x = (f64)x0;
+  f64 y = (f64)y0;
+
+  for (i32 i = 0; i <= steps; i++) {
+      SetPixel((u32)x, (u32)y, colour);
+      x += xIncrement;
+      y += yIncrement;
+  }
+}
+///
+
 u32 map_to_viewport_x(f32 world) 
 { 
   return (u32)(world / MAP_W * VIEWPORT_W);
@@ -58,7 +77,7 @@ State* game_get(void)
 void game_init(void)
 {
   state.player.pos = (v2f){VIEWPORT_W / 2, VIEWPORT_H / 2};
-  state.player.forward = (v2f){0, 16};
+  state.player.forward_angle = f_deg_to_rad(90);
   state.player.fov = f_deg_to_rad(90);
 }
 
@@ -103,9 +122,29 @@ void game_update(void)
   }
   else 
   {
-    // for (u32 x = 0; x < VIEWPORT_W; ++x)
-    // {
-    // }
+    v2f pos = state.player.pos;
+    v2f forward = {
+      cosf(state.player.forward_angle),
+      sinf(state.player.forward_angle)
+    };
+    f32 fov = state.player.fov;
+
+    f32 forward_angle = atan2f(forward.y, forward.x);
+    f32 half_fov = fov * 0.5f;
+    for (u32 x = 0; x < VIEWPORT_W; ++x)
+    {
+      f32 norm_x = ((f32)x / (f32)VIEWPORT_W * 2.f) - 1.f;
+      f32 ray_angle = forward_angle + (half_fov * norm_x);
+
+      const f32 scl = 100;
+      v2f ray_dir = {cosf(ray_angle) * scl, -sinf(ray_angle) * scl};
+      // dbg_draw_line_dda(pos.x, pos.y, pos.x + ray_dir.x, pos.y + ray_dir.y, 0xFFFFFFFF);
+
+      // Now we want to do DDA and figure out if collisions happen.
+    }
+
+    // Draw player
+    SetPixel(state.player.pos.x, state.player.pos.y, PLAYER_COLOUR);
   }
 }
 
@@ -149,8 +188,11 @@ void game_debug_ui(void)
     {
       igInputFloat("Move Speed", &PLAYER_SPEED, 0.1f, 1.f, "%.2f", 
         ImGuiInputTextFlags_None);
-      igInputFloat2("Look Direction", state.player.forward.v, "%.2f", 
-        ImGuiInputTextFlags_None);
+      // igInputFloat2("Forward Direction", state.player.forward.v, "%.2f", 
+      //   ImGuiInputTextFlags_None);
+
+      igSliderFloat("Forward Angle", &state.player.forward_angle, 
+        0.f, f_PI * 2.f, "%.4f", ImGuiInputTextFlags_None);
     }
     igUnindent(0);
   }
