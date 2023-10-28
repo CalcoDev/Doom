@@ -3,7 +3,7 @@
 
 #include "cimgui_include.h"
 #include "defines.h"
-#include "math.h"
+#include "dmath.h"
 
 #define FRAMERATE 0.016667f
 #define WINDOW_W 1280
@@ -37,8 +37,8 @@ typedef struct State
   // Game
   struct Player {
     v2f pos;
-    f32 forward_angle;
-    f32 fov;
+    v2f dir;
+    v2f plane;
   } player;
 } State;
 
@@ -55,6 +55,6 @@ b8 GetKeyDown(u16 key);
 b8 GetKeyUp(u16 key);
 
 void ClearPixels(void);
-void SetPixel(u32 x, u32 y, u32 colour);
+void SetPixel(i32 x, i32 y, u32 colour);
 
 #endif

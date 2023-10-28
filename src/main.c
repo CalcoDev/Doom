@@ -2,9 +2,7 @@
 #include <math.h>
 
 #include "cimgui_include.h"
-
 #include "defines.h"
-#include "math.h"
 #include "game.h"
 
 void GLFWKeyCallback(
