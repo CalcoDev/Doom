@@ -28,9 +28,26 @@ static f32 PLAYER_SPEED = 1.f;
 static f32 PLAYER_SENS = 0.05f;
 
 State state;
-b8 topdown_view;
-b8 topdown_raycast;
-b8 rendering_visible;
+b8 topdown_view = 1;
+b8 topdown_raycast = 1;
+b8 draw_view_ray = 1;
+b8 topdown_wasd_movement = 0;
+f32 view_ray_scale = 10.f;
+
+void draw_line_dda(u32 x0, u32 y0, i32 dx, i32 dy, u32 colour)
+{
+  i32 steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+  f64 xIncrement = (f64)dx / (f64)steps;
+  f64 yIncrement = (f64)dy / (f64)steps;
+  f64 x = (f64)x0;
+  f64 y = (f64)y0;
+
+  for (i32 i = 0; i <= steps; i++) {
+      SetPixel((u32)x, (u32)y, colour);
+      x += xIncrement;
+      y += yIncrement;
+  }
+}
 
 u32 map_to_viewport_x(f32 world) 
 { 
@@ -112,35 +129,44 @@ void game_update(void)
   
   if (topdown_view)
   {
-    if (GetKeyDown(GLFW_KEY_A))
-      move_player((v2f) {-PLAYER_SPEED, 0});
-    if (GetKeyDown(GLFW_KEY_D))
-      move_player((v2f) {PLAYER_SPEED, 0});
-    if (GetKeyDown(GLFW_KEY_W))
-      move_player((v2f) {0, -PLAYER_SPEED});
-    if (GetKeyDown(GLFW_KEY_S))
-      move_player((v2f) {0, +PLAYER_SPEED});
+    if (topdown_wasd_movement)
+    {
+      if (GetKeyDown(GLFW_KEY_A))
+        move_player((v2f) {-PLAYER_SPEED, 0});
+      if (GetKeyDown(GLFW_KEY_D))
+        move_player((v2f) {PLAYER_SPEED, 0});
+      if (GetKeyDown(GLFW_KEY_W))
+        move_player((v2f) {0, -PLAYER_SPEED});
+      if (GetKeyDown(GLFW_KEY_S))
+        move_player((v2f) {0, +PLAYER_SPEED});
+    }
+    
+    if (GetKeyDown(GLFW_KEY_LEFT))
+      state.player.forward_angle += PLAYER_SENS;
+    if (GetKeyDown(GLFW_KEY_RIGHT))
+      state.player.forward_angle -= PLAYER_SENS;
   }
-  else
+
+  if (!topdown_view || (topdown_view && !topdown_wasd_movement))
   {
     if (GetKeyDown(GLFW_KEY_A))
       state.player.forward_angle -= PLAYER_SENS;
     if (GetKeyDown(GLFW_KEY_D))
       state.player.forward_angle += PLAYER_SENS;
+    
     if (GetKeyDown(GLFW_KEY_W))
     {
       v2f forward = {
-        cosf(state.player.forward_angle),
+        -cosf(state.player.forward_angle),
         sinf(state.player.forward_angle)
       };
 
       move_player((v2f) {-PLAYER_SPEED * forward.x, -PLAYER_SPEED * forward.y});
     }
-
     if (GetKeyDown(GLFW_KEY_S))
     {
       v2f forward = {
-        cosf(state.player.forward_angle),
+        -cosf(state.player.forward_angle),
         sinf(state.player.forward_angle)
       };
       move_player((v2f) {PLAYER_SPEED * forward.x, PLAYER_SPEED * forward.y});
@@ -152,14 +178,31 @@ void game_update(void)
   // Draw map
   if (topdown_view)
   {
-    for (u32 y = 0; y < VIEWPORT_H; ++y)
+    if (!topdown_raycast)
     {
-      for (u32 x = 0; x < VIEWPORT_W; ++x)
+      for (u32 y = 0; y < VIEWPORT_H; ++y)
       {
-        u32 idx = viewport_to_map_y(y) * MAP_W + viewport_to_map_x(x);
-        u32 col = MAP_DATA[idx];
-        SetPixel(x, y, COLOUR_DATA[col]);
+        for (u32 x = 0; x < VIEWPORT_W; ++x)
+        {
+          u32 idx = viewport_to_map_y(y) * MAP_W + viewport_to_map_x(x);
+          u32 col = MAP_DATA[idx];
+          SetPixel(x, y, COLOUR_DATA[col]);
+        }
       }
+    }
+
+    if (draw_view_ray)
+    {
+      v2f dir = {
+        cosf(state.player.forward_angle),
+        -sinf(state.player.forward_angle)
+      };
+
+      draw_line_dda(
+        state.player.pos.x, state.player.pos.y, 
+        dir.x * view_ray_scale, dir.y * view_ray_scale,
+        0xFF00FF00
+      );
     }
 
     // Draw player
@@ -280,7 +323,9 @@ void game_debug_ui(void)
 
     // Render options
     {
-      if (igCheckbox("Top Down View", &topdown_view))
+      igCheckbox("Top Down View", &topdown_view);
+      
+      if (topdown_view)
         igCheckbox("Raycast 2D", &topdown_raycast);
     }
 
@@ -296,11 +341,22 @@ void game_debug_ui(void)
 
       igBeginColumns("r_header", 2, ImGuiOldColumnFlags_NoResize | ImGuiOldColumnFlags_NoBorder | ImGuiOldColumnFlags_GrowParentContentsSize);
       igSliderFloat("FOV", &state.player.fov, 
-        0.f, f_PI * 2.f, "%.2f", ImGuiInputTextFlags_None);
+        0.f, f_PI * 2.f, "%.2f", ImGuiSliderFlags_None);
       igNextColumn();
       igSliderFloat("Forward Angle", &state.player.forward_angle, 
-        0.f, f_PI * 2.f, "%.2f", ImGuiInputTextFlags_None);
+        0.f, f_PI * 2.f, "%.2f", ImGuiSliderFlags_None);
       igEndColumns();
+
+      if (topdown_view) 
+      {
+        igCheckbox("Draw View Ray", &draw_view_ray);
+        if (draw_view_ray)
+        {
+          igSliderFloat("View Ray Scale", &view_ray_scale, 
+            0.f, 32.f, "%.2f", ImGuiSliderFlags_None);
+        }
+        igCheckbox("WASD Movement", &topdown_wasd_movement);
+      }
     }
     igUnindent(0);
   }
