@@ -30,7 +30,7 @@ SRC  = $(shell find $(SRC_DIR) -type f -name "*.c")
 OBJ  = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC))
 
 # Not that cache efficient are we?
-.PHONY: all libs dirs clean cleanobjs cleanlibs
+.PHONY: all dirs libs game clean cleanobjs cleanlibs
 
 run: all
 	$(BIN)/game

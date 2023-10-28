@@ -9,8 +9,8 @@
 #define WINDOW_W 1280
 #define WINDOW_H 720
 
-#define VIEWPORT_W 320
-#define VIEWPORT_H 180
+#define VIEWPORT_W 1280
+#define VIEWPORT_H 720
 
 #define MAP_W 16
 #define MAP_H 9
@@ -20,7 +20,7 @@ typedef struct State
   // Rendering
   GLFWwindow* window;
   u32 glfw_texture;
-  u32 pixels[WINDOW_W * WINDOW_H];
+  u32 pixels[VIEWPORT_W * VIEWPORT_H];
 
   // Time
   f32 prev_time;

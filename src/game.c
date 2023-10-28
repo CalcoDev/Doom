@@ -124,6 +124,9 @@ void game_init(void)
 
 void game_update(void)
 {
+  // SetPixel(0, 0, 0xFFFFFFFF);
+  // return;
+
   if (GetKeyPressed(GLFW_KEY_F3))
     state.show_debug_ui = !state.show_debug_ui;
   
@@ -150,9 +153,9 @@ void game_update(void)
   if (!topdown_view || (topdown_view && !topdown_wasd_movement))
   {
     if (GetKeyDown(GLFW_KEY_A))
-      state.player.forward_angle -= PLAYER_SENS;
+      state.player.forward_angle -= (topdown_wasd_movement? 1:-1) * PLAYER_SENS;
     if (GetKeyDown(GLFW_KEY_D))
-      state.player.forward_angle += PLAYER_SENS;
+      state.player.forward_angle += (topdown_wasd_movement? 1:-1) * PLAYER_SENS;
     
     if (GetKeyDown(GLFW_KEY_W))
     {
@@ -203,6 +206,13 @@ void game_update(void)
         dir.x * view_ray_scale, dir.y * view_ray_scale,
         0xFF00FF00
       );
+
+      // v2f right = { dir.y, -dir.x };
+      // draw_line_dda(
+      //   state.player.pos.x, state.player.pos.y, 
+      //   right.x * view_ray_scale, right.y * view_ray_scale,
+      //   0xFF0000FF
+      // );
     }
 
     // Draw player
@@ -270,25 +280,43 @@ void game_update(void)
         
         if (topdown_view)
         {
-          if (topdown_raycast)
+          if (topdown_raycast) 
+          {
             SetPixel(upos.x, upos.y, hit.wall_colour);
+          }
         }
         else
         {
-          v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
-          f32 dist = v2_sqr_mag(_d);
-          u32 half_height = VIEWPORT_H * 0.15;
+          // v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
+          // f32 dist = v2_sqr_mag(_d);
+          // u32 half_height = VIEWPORT_H * 0.15;
 
-          i32 y0 = upos.y - half_height;
-          i32 y1 = upos.y + half_height;
+          // Simulate a 3d cross product to get right vector
+          // negate forward.y because somehow I have to invert that not really sure lmao
+          // v2f right = { -forward.y, -forward.x };
+
+          v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
+          f32 ray_dist = v2_mag(_d);
+          f32 theta = ray_angle;
+          f32 dist = cosf(theta) * ray_dist;
+
+          i32 h = (int) (VIEWPORT_H / dist);
+          i32 y0 = max((VIEWPORT_H / 2) - (h / 2), 0);
+          i32 y1 = min((VIEWPORT_H / 2) + (h / 2), VIEWPORT_H - 1);
+
           if (y0 < 1)
             y0 = 1;
+          if (y0 > VIEWPORT_H - 2)
+            y0 = VIEWPORT_H - 2;
+          if (y1 < 1)
+            y1 = 1;
           if (y1 > VIEWPORT_H - 2)
             y1 = VIEWPORT_H - 2;
 
-          draw_vline(x, 0, y0-1, 0xFF000000);
-          draw_vline(x, y0, y1, hit.wall_colour);
-          draw_vline(x, y1+1, VIEWPORT_H-1, 0xFF000000);
+          u32 ix = VIEWPORT_W - 1 - x;
+          draw_vline(ix, 0, y0-1, 0xFF000000);
+          draw_vline(ix, y0, y1, hit.wall_colour);
+          draw_vline(ix, y1+1, VIEWPORT_H-1, 0xFF000000);
         }
       }
     }

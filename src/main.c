@@ -35,7 +35,8 @@ int main(void)
   glfwMakeContextCurrent(state->window);
   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-  state->imgui_ctx = igCreateContext(NULL);
+  // state->imgui_ctx = igCreateContext(NULL);
+  igCreateContext(NULL);
 
   ImGuiIO* io = igGetIO();
   io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
