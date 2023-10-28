@@ -15,6 +15,10 @@
 #define MAP_W 16
 #define MAP_H 9
 
+#define TEX_COUNT 1
+#define TEX_W 64
+#define TEX_H 64
+
 typedef struct State
 {
   // Rendering
@@ -35,11 +39,17 @@ typedef struct State
   b8 curr_keys[GLFW_KEY_LAST];
 
   // Game
-  struct Player {
+  struct Player
+  {
     v2f pos;
     v2f dir;
     v2f plane;
   } player;
+
+  struct Texture
+  {
+    u32 data[TEX_W * TEX_H];
+  } textures[TEX_COUNT];
 } State;
 
 State* game_get(void);

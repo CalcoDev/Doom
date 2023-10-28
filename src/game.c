@@ -1,6 +1,12 @@
 #include "game.h"
 
 #include <math.h>
+#include <memory.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include "os_utils.h"
 
 const static u8 MAP_DATA[MAP_W * MAP_H] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -28,11 +34,24 @@ static f32 PLAYER_SENS = 0.05f;
 State state;
 b8 debug_view;
 
+void concat(char* str, char* suffix, i32 offset, i32 length)
+{
+  memcpy(str + offset, suffix, length);
+  *(str + offset + length) = '\0';
+}
+
 void game_init(void)
 {
   state.player.pos = (v2f) {4, 2};
   state.player.dir = (v2f) {0, -1};
   state.player.plane = (v2f) {0.66, 0};
+
+  i32 x, y, comp;
+  char path[1024];
+  get_asset_path(path, ".\\assets\\wall_tex.png", 1024, 20);
+  unsigned char* data = stbi_load(path, &x, &y, &comp, STBI_rgb_alpha);
+  memcpy(state.textures[0].data, data, TEX_W * TEX_H * 4);
+  stbi_image_free(data);
 }
 
 void move(f32 amount)
@@ -199,7 +218,7 @@ void render_raycast()
       hit.colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
     }
 
-    f32 dist = hit.yside == 0 ? 
+    f32 dist = !hit.yside ? 
       (side_dist.x - delta_dist.x) : (side_dist.y - delta_dist.y);
 
     i32 h = (i32)(VIEWPORT_H / dist);
