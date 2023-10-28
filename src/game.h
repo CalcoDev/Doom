@@ -5,6 +5,8 @@
 #include "defines.h"
 #include "dmath.h"
 
+#include "entity.h"
+
 #define FRAMERATE 0.016667f
 #define WINDOW_W 1280
 #define WINDOW_H 720
@@ -15,9 +17,11 @@
 #define MAP_W 16
 #define MAP_H 9
 
-#define TEX_COUNT 1
+#define TEX_COUNT 4
 #define TEX_W 64
 #define TEX_H 64
+
+#define ENTITY_COUNT 64
 
 typedef struct State
 {
@@ -25,6 +29,7 @@ typedef struct State
   GLFWwindow* window;
   u32 glfw_texture;
   u32 pixels[VIEWPORT_W * VIEWPORT_H];
+  f32 z_buffer[VIEWPORT_W];
 
   // Time
   f32 prev_time;
@@ -50,9 +55,14 @@ typedef struct State
   {
     u32 data[TEX_W * TEX_H];
   } textures[TEX_COUNT];
+
+  Entity entities[ENTITY_COUNT];
+  i32 entity_idx;
 } State;
 
 State* game_get(void);
+
+void game_add_entity(Entity entity);
 
 void game_init(void);
 void game_update(void);

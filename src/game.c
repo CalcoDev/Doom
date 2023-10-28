@@ -27,12 +27,21 @@ const static u32 COLOUR_DATA[4] = {
   0xFFa8327f
 };
 
+// Map the indices ... to other indices
+const static i32 TEXTURE_DATA[4] = {
+  0,
+  1,
+  1,
+  1,
+};
+
 const static u32 PLAYER_COLOUR = 0xFF0000FF;
 static f32 PLAYER_SPEED = 0.05f;
 static f32 PLAYER_SENS = 0.05f;
 
 State state;
 b8 debug_view;
+b8 topdown_raycast;
 
 void concat(char* str, char* suffix, i32 offset, i32 length)
 {
@@ -40,19 +49,36 @@ void concat(char* str, char* suffix, i32 offset, i32 length)
   *(str + offset + length) = '\0';
 }
 
+#define load_texture(path, index) load_texture_internal(path, sizeof(path) / 1, index)
+void load_texture_internal(char* path, i32 size, i32 idx)
+{
+  i32 x, y, comp;
+  char pathh[1024];
+  get_asset_path(pathh, path, 1024, 20);
+  unsigned char* data = stbi_load(pathh, &x, &y, &comp, STBI_rgb_alpha);
+  memcpy(state.textures[idx].data, data, TEX_W * TEX_H * 4);
+  stbi_image_free(data);
+}
+
 void game_init(void)
 {
+  // Player Data
   state.player.pos = (v2f) {4, 2};
   state.player.dir = (v2f) {0, -1};
   state.player.plane = (v2f) {0.66, 0};
 
-  i32 x, y, comp;
-  char path[1024];
-  get_asset_path(path, ".\\assets\\wall_tex.png", 1024, 20);
-  stbi_set_flip_vertically_on_load(1);
-  unsigned char* data = stbi_load(path, &x, &y, &comp, STBI_rgb_alpha);
-  memcpy(state.textures[0].data, data, TEX_W * TEX_H * 4);
-  stbi_image_free(data);
+  // Textures
+  load_texture(".\\assets\\wall_tex.png", 0);
+  load_texture(".\\assets\\fiipestil.png", 1);
+
+  // Entites
+  Entity fiipestil = {0};
+  fiipestil.flags = EntityFlag_Sprite;
+  fiipestil.position = (v2f){5, 5};
+  fiipestil.sprite_idx = 1;
+  game_add_entity(fiipestil);
+
+  state.show_debug_ui = 1;
 }
 
 void move(f32 amount)
@@ -118,6 +144,31 @@ void DrawVLine(i32 x, i32 y0, i32 y1, u32 colour)
     SetPixel(x, y, colour);
 }
 
+int entity_dist_sort(const void* v1, const void* v2)
+{
+  const Entity* e1 = (const Entity*)v1;
+  const Entity* e2 = (const Entity*)v2;
+
+  // TODO(calco): Should cache this but meh
+  v2f dvec1 = {
+    state.player.pos.x - e1->position.x,
+    state.player.pos.y - e1->position.y,
+  };
+  v2f dvec2 = {
+    state.player.pos.x - e2->position.x,
+    state.player.pos.y - e2->position.y,
+  };
+
+  f32 d1 = v2_sqr_mag(dvec1);
+  f32 d2 = v2_sqr_mag(dvec2);
+
+  if (d1 < d2)
+    return -1;
+  if (d2 > d1)
+    return 1;
+  return 0;
+}
+
 void render_debug()
 {
   // Draw map
@@ -157,8 +208,66 @@ void render_debug()
   SetPixel(player_pos.x, player_pos.y, 0xFF0000FF);
 }
 
+void do_sprites()
+{
+  if (state.entity_idx < 0)
+    return;
+
+  qsort(state.entities, state.entity_idx-1, sizeof(state.entities[0]), entity_dist_sort);
+
+  for (i32 e = 0; e < state.entity_idx; ++e)
+  {
+    Entity* entity = &state.entities[e];
+
+    v2f ppos = state.player.pos;
+    v2f pplane = state.player.plane;
+    v2f pdir = state.player.dir;
+    
+    // Translate relative to camera
+    v2f epos = {
+      entity->position.x - ppos.x,
+      entity->position.y - ppos.y,
+    };
+    // Projection matrix lol
+    f32 det_inverse = 1.f / (pplane.x * pdir.y - pdir.x * pplane.y);
+    
+    v2f etransform = {
+      det_inverse * (pdir.y * epos.x - pdir.x * epos.y),
+      det_inverse * (-pplane.y * epos.x + pplane.x * epos.y)
+    };
+
+    i32 escreenx = (i32)((VIEWPORT_W / 2) * (1.f + etransform.x / etransform.y));
+    
+    i32 eheight = abs((int)(VIEWPORT_H / etransform.y));
+    i32 y0 = max(0, (-eheight / 2 + VIEWPORT_H / 2));
+    i32 y1 = min((eheight / 2 + VIEWPORT_H / 2), VIEWPORT_H - 1);
+
+    i32 ewidth = abs((int)(VIEWPORT_H / etransform.y));
+    i32 x0 = max(0, (-ewidth / 2 + escreenx));
+    i32 x1 = min((ewidth / 2 + escreenx), VIEWPORT_W - 1);
+
+    // Loop and render
+    for (i32 stripe = x0; stripe < x1; ++stripe)
+    {
+      i32 tex_x = (int)(256 * (stripe - (-ewidth / 2 + escreenx)) * TEX_W / ewidth) / 256;
+      if (etransform.y > 0 && stripe > 0 && stripe < VIEWPORT_W && etransform.y < state.z_buffer[stripe])
+      {
+        for (i32 sy = y0; sy < y1; ++sy)
+        {
+          i32 d = (sy) * 256 - VIEWPORT_H * 128 + eheight * 128;
+          i32 tex_y = ((d * TEX_H) / eheight) / 256;
+          u32 colour = state.textures[entity->sprite_idx].data[tex_y * TEX_W + tex_x];
+          if ((colour >> 24) & 0xFF != 0) // non transparent
+            SetPixel(stripe, sy, colour);
+        }
+      }
+    }
+  }
+}
+
 void render_raycast()
 {
+  // Draw walls
   for (i32 x = 0; x < VIEWPORT_W; ++x)
   {
     f32 norm_x = ((f32)x / VIEWPORT_W) * 2.f - 1.f;
@@ -185,7 +294,6 @@ void render_raycast()
       b8 hit;
       b8 yside;
       u32 wall;
-      v2f pos;
     } hit = {0};
 
     while (!hit.hit)
@@ -208,19 +316,13 @@ void render_raycast()
       {
         hit.hit = 1;
         hit.wall = wall;
-        hit.pos = (v2f) { pos.x + side_dist.x, pos.y + side_dist.y };
       }
     }
 
-    // if (hit.yside)
-    // {
-    //   u32 br = ((hit.colour & 0xFF00FF) * 0xC0) >> 8;
-    //   u32 g  = ((hit.colour & 0x00FF00) * 0xC0) >> 8;
-    //   hit.colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
-    // }
-
     f32 dist = !hit.yside ? 
       (side_dist.x - delta_dist.x) : (side_dist.y - delta_dist.y);
+    
+    state.z_buffer[x] = dist;
 
     i32 line_height = (i32)(VIEWPORT_H / dist);
     i32 y0 = max((VIEWPORT_H / 2) - (line_height / 2), 0);
@@ -260,6 +362,8 @@ void render_raycast()
     DrawVLine(x, 0, y0, 0xFF202020);
     DrawVLine(x, y1, VIEWPORT_H - 1, 0xFF505050);
   }
+
+  do_sprites();
 }
 
 void game_update(void)
@@ -289,6 +393,13 @@ void game_debug_ui(void)
   igBegin("Debug Window", NULL, ImGuiWindowFlags_AlwaysAutoResize);
 
   igCheckbox("Debug View", &debug_view);
+  
+  if (!debug_view)
+  {
+    igText("Framerate: %.4f", 1.f / (state.curr_time - state.prev_time));
+
+    igCheckbox("topdown Raycast", &topdown_raycast);
+  }
 
   igEnd();
 }
@@ -296,6 +407,11 @@ void game_debug_ui(void)
 void game_free(void) 
 {
 
+}
+
+void game_add_entity(Entity entity)
+{
+  state.entities[state.entity_idx++] = entity;
 }
 
 void ClearPixels(void)
