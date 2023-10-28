@@ -25,9 +25,11 @@ const static u32 COLOUR_DATA[4] = {
 
 const static u32 PLAYER_COLOUR = 0xFF0000FF;
 static f32 PLAYER_SPEED = 1.f;
+static f32 PLAYER_SENS = 0.05f;
 
 State state;
 b8 topdown_view;
+b8 topdown_raycast;
 b8 rendering_visible;
 
 u32 map_to_viewport_x(f32 world) 
@@ -56,6 +58,41 @@ void draw_vline(u32 x, u32 y0, u32 y1, u32 colour)
     SetPixel(x, y, colour);
 }
 
+void move_player(v2f movement)
+{
+  v2f npos = {
+    state.player.pos.x + movement.x,
+    state.player.pos.y + movement.y,
+  };
+
+  v2u mpos = {
+    viewport_to_map_x(state.player.pos.x),
+    viewport_to_map_y(state.player.pos.y),
+  };
+  v2u mnpos = {
+    viewport_to_map_x(npos.x),
+    viewport_to_map_y(npos.y),
+  };
+
+  // Try move X
+  if (MAP_DATA[mpos.y * MAP_W + mnpos.x] == 0)
+    state.player.pos.x += movement.x;
+  
+  // Try move Y
+  if (MAP_DATA[mnpos.y * MAP_W + mpos.x] == 0)
+    state.player.pos.y += movement.y;
+  
+  // Clamping shouldn't be neccesary
+  // if (state.player.pos.x < 0.f)
+  //   state.player.pos.x = 0.f;
+  // if (state.player.pos.y < 0.f)
+  //   state.player.pos.y = 0.f;
+  // if (state.player.pos.x >= VIEWPORT_W)
+  //   state.player.pos.x = VIEWPORT_W - 0.001f;
+  // if (state.player.pos.y >= VIEWPORT_H)
+  //   state.player.pos.y = VIEWPORT_H - 0.001f;
+}
+
 State* game_get(void)
 {
   return &state;
@@ -73,25 +110,46 @@ void game_update(void)
   if (GetKeyPressed(GLFW_KEY_F3))
     state.show_debug_ui = !state.show_debug_ui;
   
-  if (GetKeyDown(GLFW_KEY_A))
-    state.player.pos.x -= PLAYER_SPEED;
-  if (GetKeyDown(GLFW_KEY_D))
-    state.player.pos.x += PLAYER_SPEED;
-  if (GetKeyDown(GLFW_KEY_W))
-    state.player.pos.y -= PLAYER_SPEED;
-  if (GetKeyDown(GLFW_KEY_S))
-    state.player.pos.y += PLAYER_SPEED;
-  
-  if (state.player.pos.x < 0.f)
-    state.player.pos.x = 0.f;
-  if (state.player.pos.y < 0.f)
-    state.player.pos.y = 0.f;
-  if (state.player.pos.x >= VIEWPORT_W)
-    state.player.pos.x = VIEWPORT_W - 0.001f;
-  if (state.player.pos.y >= VIEWPORT_H)
-    state.player.pos.y = VIEWPORT_H - 0.001f;
+  if (topdown_view)
+  {
+    if (GetKeyDown(GLFW_KEY_A))
+      move_player((v2f) {-PLAYER_SPEED, 0});
+    if (GetKeyDown(GLFW_KEY_D))
+      move_player((v2f) {PLAYER_SPEED, 0});
+    if (GetKeyDown(GLFW_KEY_W))
+      move_player((v2f) {0, -PLAYER_SPEED});
+    if (GetKeyDown(GLFW_KEY_S))
+      move_player((v2f) {0, +PLAYER_SPEED});
+  }
+  else
+  {
+    if (GetKeyDown(GLFW_KEY_A))
+      state.player.forward_angle -= PLAYER_SENS;
+    if (GetKeyDown(GLFW_KEY_D))
+      state.player.forward_angle += PLAYER_SENS;
+    if (GetKeyDown(GLFW_KEY_W))
+    {
+      v2f forward = {
+        cosf(state.player.forward_angle),
+        sinf(state.player.forward_angle)
+      };
+
+      move_player((v2f) {-PLAYER_SPEED * forward.x, -PLAYER_SPEED * forward.y});
+    }
+
+    if (GetKeyDown(GLFW_KEY_S))
+    {
+      v2f forward = {
+        cosf(state.player.forward_angle),
+        sinf(state.player.forward_angle)
+      };
+      move_player((v2f) {PLAYER_SPEED * forward.x, PLAYER_SPEED * forward.y});
+    }
+  }
   
   ClearPixels();
+
+  // Draw map
   if (topdown_view)
   {
     for (u32 y = 0; y < VIEWPORT_H; ++y)
@@ -107,7 +165,8 @@ void game_update(void)
     // Draw player
     SetPixel(state.player.pos.x, state.player.pos.y, PLAYER_COLOUR);
   }
-  else 
+
+  // Raycasting stuff, 2d if 2d, 2d if pseudo 3d
   {
     v2f pos = state.player.pos;
     v2f forward = {
@@ -166,30 +225,30 @@ void game_update(void)
           hit.wall_colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
         }
         
-        v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
-        f32 dist = v2_sqr_mag(_d);
+        if (topdown_view)
+        {
+          if (topdown_raycast)
+            SetPixel(upos.x, upos.y, hit.wall_colour);
+        }
+        else
+        {
+          v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
+          f32 dist = v2_sqr_mag(_d);
+          u32 half_height = VIEWPORT_H * 0.15;
 
-        // const f32 _md = VIEWPORT_W * VIEWPORT_W + VIEWPORT_H * VIEWPORT_H;
-        // const u32 max_height = VIEWPORT_H;
-        // u32 half_height = (dist / _md) * max_height * 0.5f;
-        u32 half_height = VIEWPORT_H * 0.15;
+          i32 y0 = upos.y - half_height;
+          i32 y1 = upos.y + half_height;
+          if (y0 < 1)
+            y0 = 1;
+          if (y1 > VIEWPORT_H - 2)
+            y1 = VIEWPORT_H - 2;
 
-        i32 y0 = upos.y - half_height;
-        i32 y1 = upos.y + half_height;
-        if (y0 < 1)
-          y0 = 1;
-        if (y1 > VIEWPORT_H - 2)
-          y1 = VIEWPORT_H - 2;
-
-        draw_vline(x, 0, y0-1, 0xFF000000);
-        draw_vline(x, y0, y1, hit.wall_colour);
-        draw_vline(x, y1+1, VIEWPORT_H-1, 0xFF000000);
-        // SetPixel(upos.x, upos.y, hit.wall_colour);
+          draw_vline(x, 0, y0-1, 0xFF000000);
+          draw_vline(x, y0, y1, hit.wall_colour);
+          draw_vline(x, y1+1, VIEWPORT_H-1, 0xFF000000);
+        }
       }
     }
-
-    // Draw player
-    SetPixel(state.player.pos.x, state.player.pos.y, PLAYER_COLOUR);
   }
 }
 
@@ -221,7 +280,8 @@ void game_debug_ui(void)
 
     // Render options
     {
-      igCheckbox("Top Down View", &topdown_view);
+      if (igCheckbox("Top Down View", &topdown_view))
+        igCheckbox("Raycast 2D", &topdown_raycast);
     }
 
     igUnindent(0);
@@ -233,16 +293,14 @@ void game_debug_ui(void)
     {
       igInputFloat("Move Speed", &PLAYER_SPEED, 0.1f, 1.f, "%.2f", 
         ImGuiInputTextFlags_None);
-      // igInputFloat2("Forward Direction", state.player.forward.v, "%.2f", 
-      //   ImGuiInputTextFlags_None);
 
-igBeginColumns("r_header", 2, ImGuiOldColumnFlags_NoResize | ImGuiOldColumnFlags_NoBorder | ImGuiOldColumnFlags_GrowParentContentsSize);
+      igBeginColumns("r_header", 2, ImGuiOldColumnFlags_NoResize | ImGuiOldColumnFlags_NoBorder | ImGuiOldColumnFlags_GrowParentContentsSize);
       igSliderFloat("FOV", &state.player.fov, 
-        0.f, f_PI * 2.f, "%.4f", ImGuiInputTextFlags_None);
-igNextColumn();
-igSliderFloat("Forward Angle", &state.player.forward_angle, 
-        0.f, f_PI * 2.f, "%.4f", ImGuiInputTextFlags_None);
-igEndColumns();
+        0.f, f_PI * 2.f, "%.2f", ImGuiInputTextFlags_None);
+      igNextColumn();
+      igSliderFloat("Forward Angle", &state.player.forward_angle, 
+        0.f, f_PI * 2.f, "%.2f", ImGuiInputTextFlags_None);
+      igEndColumns();
     }
     igUnindent(0);
   }
