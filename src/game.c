@@ -62,10 +62,6 @@ void load_texture_internal(char* path, i32 size, i32 idx)
 
 void game_init(void)
 {
-  // Audio
-  state.soloud = Soloud_create();
-  Soloud_initEx(state.soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO);
-
   // Player Data
   state.player.pos = (v2f) {4, 2};
   state.player.dir = (v2f) {0, -1};
@@ -127,7 +123,7 @@ v2i map_to_viewport(v2f p)
   };
 }
 
-void DrawLine(v2i p, v2i d, u32 colour)
+void draw_line(v2i p, v2i d, u32 colour)
 {
   i32 steps = abs(d.x) > abs(d.y) ? abs(d.x) : abs(d.y);
   f32 xIncrement = (f32)d.x / (f32)steps;
@@ -136,16 +132,16 @@ void DrawLine(v2i p, v2i d, u32 colour)
   f32 y = (f32) p.y;
 
   for (i32 i = 0; i <= steps; i++) {
-      SetPixel((i32)x, (i32)y, colour);
+      set_pixel((i32)x, (i32)y, colour);
       x += xIncrement;
       y += yIncrement;
   }
 }
 
-void DrawVLine(i32 x, i32 y0, i32 y1, u32 colour)
+void draw_vline(i32 x, i32 y0, i32 y1, u32 colour)
 {
   for (int y = y0; y <= y1; y++)
-    SetPixel(x, y, colour);
+    set_pixel(x, y, colour);
 }
 
 int entity_dist_sort(const void* v1, const void* v2)
@@ -183,7 +179,7 @@ void render_debug()
       v2i pos = viewport_to_map((v2f) {x, y});
       u8 wall = MAP_DATA[pos.y * MAP_W + pos.x];
       u32 colour = COLOUR_DATA[wall];
-      SetPixel(x, y, colour);
+      set_pixel(x, y, colour);
     }
   }
   
@@ -195,7 +191,7 @@ void render_debug()
     (i32)(state.player.dir.x * scale),
     (i32)(state.player.dir.y * scale)
   };
-  DrawLine(player_pos, dir_off, 0xFF00FF00);
+  draw_line(player_pos, dir_off, 0xFF00FF00);
 
   // Draw look plane
   v2i plane_off = {
@@ -206,10 +202,10 @@ void render_debug()
     player_pos.x + dir_off.x - plane_off.x / 2,
     player_pos.y + dir_off.y - plane_off.y / 2
   };
-  DrawLine(plane_pos, plane_off, 0xFFFF0000);
+  draw_line(plane_pos, plane_off, 0xFFFF0000);
 
   // Draw player
-  SetPixel(player_pos.x, player_pos.y, 0xFF0000FF);
+  set_pixel(player_pos.x, player_pos.y, 0xFF0000FF);
 }
 
 void do_sprites()
@@ -262,7 +258,7 @@ void do_sprites()
           i32 tex_y = ((d * TEX_H) / eheight) / 256;
           u32 colour = state.textures[entity->sprite_idx].data[tex_y * TEX_W + tex_x];
           if ((colour >> 24) & 0xFF != 0) // non transparent
-            SetPixel(stripe, sy, colour);
+            set_pixel(stripe, sy, colour);
         }
       }
     }
@@ -360,11 +356,11 @@ void render_raycast()
         u32 g  = ((colour & 0x00FF00) * 0xC0) >> 8;
         colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
       }
-      SetPixel(x, dy, colour);
+      set_pixel(x, dy, colour);
     }
 
-    DrawVLine(x, 0, y0, 0xFF202020);
-    DrawVLine(x, y1, VIEWPORT_H - 1, 0xFF505050);
+    draw_vline(x, 0, y0, 0xFF202020);
+    draw_vline(x, y1, VIEWPORT_H - 1, 0xFF505050);
   }
 
   do_sprites();
@@ -410,8 +406,6 @@ void game_debug_ui(void)
 
 void game_free(void) 
 {
-  Soloud_deinit(state.soloud);
-  Soloud_destroy(state.soloud);
 }
 
 void game_add_entity(Entity entity)
@@ -424,7 +418,7 @@ void ClearPixels(void)
   for (i32 i = 0; i < VIEWPORT_W * VIEWPORT_H; ++i)
     state.pixels[i] = 0x00000000;
 }
-void SetPixel(i32 x, i32 y, u32 colour)
+void set_pixel(i32 x, i32 y, u32 colour)
 {
   state.pixels[y * VIEWPORT_W + x] = colour;
 }
