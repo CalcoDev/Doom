@@ -39,6 +39,8 @@ typedef struct v2u
 #define f_deg_to_rad(degrees) ((degrees) * (f_PI / 180.f))
 #define f_rad_to_deg(radians) ((radians) * (180.f/ f_PI))
 
+f32 f_sign(f32 n);
+
 v2f v2f_rotate(v2f vec, f32 angle);
 
 #endif

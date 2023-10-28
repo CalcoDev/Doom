@@ -92,6 +92,12 @@ void DrawLine(v2i p, v2i d, u32 colour)
   }
 }
 
+void DrawVLine(i32 x, i32 y0, i32 y1, u32 colour)
+{
+  for (int y = y0; y <= y1; y++)
+    SetPixel(x, y, colour);
+}
+
 void render_debug()
 {
   // Draw map
@@ -133,7 +139,77 @@ void render_debug()
 
 void render_raycast()
 {
+  for (i32 x = 0; x < VIEWPORT_W; ++x)
+  {
+    f32 norm_x = ((f32)x / VIEWPORT_W) * 2.f - 1.f;
+    v2f dir = {
+      state.player.dir.x + state.player.plane.x * norm_x,
+      state.player.dir.y + state.player.plane.y * norm_x,
+    };
 
+    v2f pos = state.player.pos;
+    v2i ipos = v2_i(pos);
+    v2i step = { (i32)f_sign(dir.x), (i32)f_sign(dir.y) };
+
+    v2f delta_dist = {
+      fabsf(dir.x) < 1e-20 ? 1e30 : fabsf(1.0f / dir.x),
+      fabsf(dir.y) < 1e-20 ? 1e30 : fabsf(1.0f / dir.y)
+    };
+    v2f side_dist = {
+      delta_dist.x * (dir.x < 0 ? (pos.x - ipos.x) : (ipos.x + 1 - pos.x)),
+      delta_dist.y * (dir.y < 0 ? (pos.y - ipos.y) : (ipos.y + 1 - pos.y))
+    };
+
+    struct dda_hit
+    {
+      b8 hit;
+      b8 yside;
+      u32 colour;
+      v2f pos;
+    } hit = {0};
+
+    while (!hit.hit)
+    {
+      if (side_dist.x < side_dist.y) 
+      {
+        side_dist.x += delta_dist.x;
+        ipos.x += step.x;
+        hit.yside = 0;
+      }
+      else 
+      {
+        side_dist.y += delta_dist.y;
+        ipos.y += step.y;
+        hit.yside = 1;
+      }
+
+      b8 wall = MAP_DATA[ipos.y * MAP_W + ipos.x];
+      if (wall != 0)
+      {
+        hit.hit = 1;
+        hit.colour = COLOUR_DATA[wall];
+        hit.pos = (v2f) { pos.x + side_dist.x, pos.y + side_dist.y };
+      }
+    }
+
+    if (hit.yside)
+    {
+      u32 br = ((hit.colour & 0xFF00FF) * 0xC0) >> 8;
+      u32 g  = ((hit.colour & 0x00FF00) * 0xC0) >> 8;
+      hit.colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
+    }
+
+    f32 dist = hit.yside == 0 ? 
+      (side_dist.x - delta_dist.x) : (side_dist.y - delta_dist.y);
+
+    i32 h = (i32)(VIEWPORT_H / dist);
+    i32 y0 = max((VIEWPORT_H / 2) - (h / 2), 0);
+    i32 y1 = min((VIEWPORT_H / 2) + (h / 2), VIEWPORT_H - 1);
+
+    DrawVLine(x, 0, y0, 0xFF202020);
+    DrawVLine(x, y0, y1, hit.colour);
+    DrawVLine(x, y1, VIEWPORT_H - 1, 0xFF505050);
+  }
 }
 
 void game_update(void)
@@ -179,10 +255,6 @@ void ClearPixels(void)
 }
 void SetPixel(i32 x, i32 y, u32 colour)
 {
-  if (x < 0 || y < 0 || x >= VIEWPORT_W || y >= VIEWPORT_H)
-    return;
-
-  y = VIEWPORT_H - 1 - y;
   state.pixels[y * VIEWPORT_W + x] = colour;
 }
 

@@ -56,7 +56,7 @@ int main(void)
   static const f32 verts[] = {-1, 1, -1, -1, 1, -1, 1, -1, 1, 1, -1, 1};
   static const char* vs_s =
       "#version 330 core\nlayout(location = 0) in vec2 p;out vec2 tc;void "
-      "main(){tc=p;gl_Position=vec4(p.xy, 1, 1);}";
+      "main(){tc=vec2(p.x, -p.y);gl_Position=vec4(p.xy, 1, 1);}";
   static const char* fs_s =
       "#version 330 core\nout vec4 FC;in vec2 tc;uniform sampler2D "
       "t;void main(){FC=texture(t, vec2((tc.x+1)/2,(tc.y+1)/2));}";
