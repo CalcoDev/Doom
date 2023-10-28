@@ -62,6 +62,10 @@ void load_texture_internal(char* path, i32 size, i32 idx)
 
 void game_init(void)
 {
+  // Audio
+  state.soloud = Soloud_create();
+  Soloud_initEx(state.soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO);
+
   // Player Data
   state.player.pos = (v2f) {4, 2};
   state.player.dir = (v2f) {0, -1};
@@ -406,7 +410,8 @@ void game_debug_ui(void)
 
 void game_free(void) 
 {
-
+  Soloud_deinit(state.soloud);
+  Soloud_destroy(state.soloud);
 }
 
 void game_add_entity(Entity entity)

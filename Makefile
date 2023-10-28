@@ -14,11 +14,13 @@ CFLAGS += -I$(SRC_LIB_DIR)/glad/include \
 	-I$(SRC_LIB_DIR)/cimgui/imgui/backends \
 	-I$(SRC_LIB_DIR)/cimgui/imgui \
 	-I$(SRC_LIB_DIR)/cimgui \
-	-I$(SRC_LIB_DIR)/cimgui/generator/output
+	-I$(SRC_LIB_DIR)/cimgui/generator/output \
+	-I$(SRC_LIB_DIR)/soloud/include
 
 LDFLAGS = $(OBJ_LIB_DIR)/glad.o \
 	$(OBJ_LIB_DIR)/glfw/src/glfw3.lib \
-	$(OBJ_LIB_DIR)/cimgui/cimgui.lib
+	$(OBJ_LIB_DIR)/cimgui/cimgui.lib \
+	$(OBJ_LIB_DIR)/soloud/soloud.lib
 
 ifeq ($(OS),Windows_NT)
 	LDFLAGS += -lmsvcrt.lib -lshell32.lib -lUser32.lib -lKernel32.lib \
@@ -55,10 +57,18 @@ libs:
 		-DGLFW_INSTALL=OFF
 	make -C $(OBJ_LIB_DIR)/glfw
 	
-# do cimgui - HMMM, ALWAYS BUILDING THIS???
+# do cimgui
 	make -C $(SRC_LIB_DIR)/cimgui all -e SRC_LIB_DIR=../../$(SRC_LIB_DIR) -e OBJ_LIB_DIR=../../$(OBJ_LIB_DIR)
 
-# NO MORE CIMGUI LOL
+# do soloud
+	cmake $(CMFLAGS) -DCMAKE_CXX_COMPILER=clang++ \
+		-S $(SRC_LIB_DIR)/soloud/contrib -B $(OBJ_LIB_DIR)/soloud \
+		-DSOLOUD_BUILD_DEMOS=ON -DSOLOUD_GENERATE_GLUE=OFF -DSOLOUD_STATIC=ON \
+		-DSOLOUD_C_API=ON -DSOLOUD_BACKEND_NULL=OFF -DSOLOUD_BACKEND_SDL2=OFF \
+		-DSOLOUD_BACKEND_ALSA=OFF -DSOLOUD_BACKEND_COREAUDIO=OFF \
+		-DSOLOUD_BACKEND_OPENSLES=OFF -DSOLOUD_BACKEND_XAUDIO2=OFF \
+		-DSOLOUD_BACKEND_WINMM=OFF -DSOLOUD_BACKEND_WASAPI=ON
+	make -C $(OBJ_LIB_DIR)/soloud
 	
 game: $(OBJ)
 	$(CC) -o $(BIN)/game $^ $(LDFLAGS)

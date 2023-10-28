@@ -1,6 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <soloud_c.h>
+
 #include "cimgui_include.h"
 #include "defines.h"
 #include "dmath.h"
@@ -30,6 +32,9 @@ typedef struct State
   u32 glfw_texture;
   u32 pixels[VIEWPORT_W * VIEWPORT_H];
   f32 z_buffer[VIEWPORT_W];
+
+  // Audio Engine
+  Soloud* soloud;
 
   // Time
   f32 prev_time;

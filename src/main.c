@@ -13,7 +13,47 @@ void GLFWKeyCallback(
   state->curr_keys[key] = action == GLFW_PRESS || action == GLFW_REPEAT;
 }
 
+void visualize_volume(Soloud *soloud)
+{
+	static int spin = 0;
+	int i, p;
+	float v = Soloud_getApproximateVolume(soloud, 0);
+	printf("\r%c ", (int)("|\\-/"[spin & 3]));
+	spin++;
+	p = (int)(v * 60);
+	if (p > 59) p = 59;
+	for (i = 0; i < p; i++)
+		printf("=");
+	for (i = p; i < 60; i++)
+		printf(" ");
+}
+
 int main(void)
+{
+  Soloud *soloud = Soloud_create();
+
+	Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO);
+  Speech *speech = Speech_create();
+
+	Speech_setText(speech, "1 2 3       A B C        Doooooo    Reeeeee    Miiiiii    Faaaaaa    Soooooo    Laaaaaa    Tiiiiii    Doooooo!");
+
+	Soloud_setGlobalVolume(soloud, 4);
+	Soloud_play(soloud, speech);
+
+	printf("Playing speech test..\n");
+
+	while (Soloud_getVoiceCount(soloud) > 0)
+	{
+		visualize_volume(soloud);
+	}
+	printf("\nFinished.\n");
+	Speech_destroy(speech);
+  Soloud_deinit(soloud);
+		
+	Soloud_destroy(soloud);
+}
+
+int _main(void)
 {
   tn_assert(glfwInit() != 0, "Failed to initialize glfw.");
 
@@ -135,7 +175,7 @@ int main(void)
       state->prev_time = state->curr_time;
     }
   }
-
+  
   game_free();
 
   ImGui_ImplOpenGL3_Shutdown();
