@@ -49,6 +49,7 @@ void game_init(void)
   i32 x, y, comp;
   char path[1024];
   get_asset_path(path, ".\\assets\\wall_tex.png", 1024, 20);
+  stbi_set_flip_vertically_on_load(1);
   unsigned char* data = stbi_load(path, &x, &y, &comp, STBI_rgb_alpha);
   memcpy(state.textures[0].data, data, TEX_W * TEX_H * 4);
   stbi_image_free(data);
@@ -183,7 +184,7 @@ void render_raycast()
     {
       b8 hit;
       b8 yside;
-      u32 colour;
+      u32 wall;
       v2f pos;
     } hit = {0};
 
@@ -206,27 +207,57 @@ void render_raycast()
       if (wall != 0)
       {
         hit.hit = 1;
-        hit.colour = COLOUR_DATA[wall];
+        hit.wall = wall;
         hit.pos = (v2f) { pos.x + side_dist.x, pos.y + side_dist.y };
       }
     }
 
-    if (hit.yside)
-    {
-      u32 br = ((hit.colour & 0xFF00FF) * 0xC0) >> 8;
-      u32 g  = ((hit.colour & 0x00FF00) * 0xC0) >> 8;
-      hit.colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
-    }
+    // if (hit.yside)
+    // {
+    //   u32 br = ((hit.colour & 0xFF00FF) * 0xC0) >> 8;
+    //   u32 g  = ((hit.colour & 0x00FF00) * 0xC0) >> 8;
+    //   hit.colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
+    // }
 
     f32 dist = !hit.yside ? 
       (side_dist.x - delta_dist.x) : (side_dist.y - delta_dist.y);
 
-    i32 h = (i32)(VIEWPORT_H / dist);
-    i32 y0 = max((VIEWPORT_H / 2) - (h / 2), 0);
-    i32 y1 = min((VIEWPORT_H / 2) + (h / 2), VIEWPORT_H - 1);
+    i32 line_height = (i32)(VIEWPORT_H / dist);
+    i32 y0 = max((VIEWPORT_H / 2) - (line_height / 2), 0);
+    i32 y1 = min((VIEWPORT_H / 2) + (line_height / 2), VIEWPORT_H - 1);
+
+    // unhardcode later
+    i32 tex_num = 0;
+    
+    // the exact coords where the wall was hit
+    f32 wall_x = hit.yside ? pos.x + dist * dir.x : pos.y + dist * dir.y;
+    wall_x -= (f32)((i32)wall_x);
+
+    // X texture coordinate
+    i32 tex_x = (int)(wall_x * TEX_W);
+    if(hit.yside == 0 && dir.x > 0 || hit.yside == 1 && dir.y < 0)
+      tex_x = TEX_W - tex_x - 1;
+
+    // Get the Y texture coord
+    f32 tex_step = TEX_H / (f32)line_height;
+
+    // TODO(calco): Maybe cast these to floats
+    f32 tex_y_pos = (y0 - VIEWPORT_H / 2 + line_height / 2) * tex_step;
+    for (i32 dy = y0; dy < y1; ++dy)
+    {
+      i32 tex_y = (int)tex_y_pos & (TEX_H - 1);
+      tex_y_pos += tex_step;
+      u32 colour = state.textures[tex_num].data[tex_y * TEX_W + tex_x];
+      if (hit.yside)
+      {
+        u32 br = ((colour & 0xFF00FF) * 0xC0) >> 8;
+        u32 g  = ((colour & 0x00FF00) * 0xC0) >> 8;
+        colour = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
+      }
+      SetPixel(x, dy, colour);
+    }
 
     DrawVLine(x, 0, y0, 0xFF202020);
-    DrawVLine(x, y0, y1, hit.colour);
     DrawVLine(x, y1, VIEWPORT_H - 1, 0xFF505050);
   }
 }
