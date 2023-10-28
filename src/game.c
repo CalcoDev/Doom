@@ -98,16 +98,6 @@ void move_player(v2f movement)
   // Try move Y
   if (MAP_DATA[mnpos.y * MAP_W + mpos.x] == 0)
     state.player.pos.y += movement.y;
-  
-  // Clamping shouldn't be neccesary
-  // if (state.player.pos.x < 0.f)
-  //   state.player.pos.x = 0.f;
-  // if (state.player.pos.y < 0.f)
-  //   state.player.pos.y = 0.f;
-  // if (state.player.pos.x >= VIEWPORT_W)
-  //   state.player.pos.x = VIEWPORT_W - 0.001f;
-  // if (state.player.pos.y >= VIEWPORT_H)
-  //   state.player.pos.y = VIEWPORT_H - 0.001f;
 }
 
 State* game_get(void)
@@ -124,9 +114,6 @@ void game_init(void)
 
 void game_update(void)
 {
-  // SetPixel(0, 0, 0xFFFFFFFF);
-  // return;
-
   if (GetKeyPressed(GLFW_KEY_F3))
     state.show_debug_ui = !state.show_debug_ui;
   
@@ -144,35 +131,37 @@ void game_update(void)
         move_player((v2f) {0, +PLAYER_SPEED});
     }
     
+    // INVERTED BECAUSE -Y IS +Y
     if (GetKeyDown(GLFW_KEY_LEFT))
-      state.player.forward_angle += PLAYER_SENS;
-    if (GetKeyDown(GLFW_KEY_RIGHT))
       state.player.forward_angle -= PLAYER_SENS;
+    if (GetKeyDown(GLFW_KEY_RIGHT))
+      state.player.forward_angle += PLAYER_SENS;
   }
 
   if (!topdown_view || (topdown_view && !topdown_wasd_movement))
   {
+    // INVERTED BECAUSE -Y IS +Y
     if (GetKeyDown(GLFW_KEY_A))
-      state.player.forward_angle -= (topdown_wasd_movement? 1:-1) * PLAYER_SENS;
+      state.player.forward_angle -= PLAYER_SENS;
     if (GetKeyDown(GLFW_KEY_D))
-      state.player.forward_angle += (topdown_wasd_movement? 1:-1) * PLAYER_SENS;
+      state.player.forward_angle += PLAYER_SENS;
     
     if (GetKeyDown(GLFW_KEY_W))
     {
       v2f forward = {
-        -cosf(state.player.forward_angle),
+        cosf(state.player.forward_angle),
         sinf(state.player.forward_angle)
       };
 
-      move_player((v2f) {-PLAYER_SPEED * forward.x, -PLAYER_SPEED * forward.y});
+      move_player((v2f) {PLAYER_SPEED * forward.x, PLAYER_SPEED * forward.y});
     }
     if (GetKeyDown(GLFW_KEY_S))
     {
       v2f forward = {
-        -cosf(state.player.forward_angle),
+        cosf(state.player.forward_angle),
         sinf(state.player.forward_angle)
       };
-      move_player((v2f) {PLAYER_SPEED * forward.x, PLAYER_SPEED * forward.y});
+      move_player((v2f) {-PLAYER_SPEED * forward.x, -PLAYER_SPEED * forward.y});
     }
   }
   
@@ -198,7 +187,7 @@ void game_update(void)
     {
       v2f dir = {
         cosf(state.player.forward_angle),
-        -sinf(state.player.forward_angle)
+        sinf(state.player.forward_angle)
       };
 
       draw_line_dda(
@@ -206,13 +195,6 @@ void game_update(void)
         dir.x * view_ray_scale, dir.y * view_ray_scale,
         0xFF00FF00
       );
-
-      // v2f right = { dir.y, -dir.x };
-      // draw_line_dda(
-      //   state.player.pos.x, state.player.pos.y, 
-      //   right.x * view_ray_scale, right.y * view_ray_scale,
-      //   0xFF0000FF
-      // );
     }
 
     // Draw player
@@ -228,13 +210,12 @@ void game_update(void)
     };
     f32 fov = state.player.fov;
 
-    f32 forward_angle = atan2f(forward.y, forward.x);
     f32 half_fov = fov * 0.5f;
     for (u32 x = 0; x < VIEWPORT_W; ++x)
     {
       f32 norm_x = ((f32)x / (f32)VIEWPORT_W * 2.f) - 1.f;
-      f32 ray_angle = forward_angle + (half_fov * norm_x);
-      v2f ray_dir = {cosf(ray_angle), -sinf(ray_angle)};
+      f32 ray_angle = state.player.forward_angle + (half_fov * norm_x);
+      v2f ray_dir = {cosf(ray_angle), sinf(ray_angle)};
 
       struct Hit {
         v2f pos;
@@ -288,35 +269,38 @@ void game_update(void)
         else
         {
           // v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
-          // f32 dist = v2_sqr_mag(_d);
-          // u32 half_height = VIEWPORT_H * 0.15;
+          // f32 ray_dist = v2_sqr_mag(_d);
+          // f64 ray_dist = (_d.x) * (_d.x) + (_d.y) * (_d.y);
+          // ray_dist = sqrt(ray_dist);
+          // f32 dist = ray_dist;
 
-          // Simulate a 3d cross product to get right vector
-          // negate forward.y because somehow I have to invert that not really sure lmao
-          // v2f right = { -forward.y, -forward.x };
+          // i32 h = (int) (VIEWPORT_H / dist);
+          // i32 y0 = max((VIEWPORT_H / 2) - (h / 2), 0);
+          // i32 y1 = min((VIEWPORT_H / 2) + (h / 2), VIEWPORT_H - 1);
 
-          v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
-          f32 ray_dist = v2_mag(_d);
-          f32 theta = ray_angle;
-          f32 dist = cosf(theta) * ray_dist;
+          SetPixel(x, upos.y, hit.wall_colour);
 
-          i32 h = (int) (VIEWPORT_H / dist);
-          i32 y0 = max((VIEWPORT_H / 2) - (h / 2), 0);
-          i32 y1 = min((VIEWPORT_H / 2) + (h / 2), VIEWPORT_H - 1);
+          // v2f _d = {pos.x - hit.pos.x, pos.y - hit.pos.y};
+          // f32 ray_dist = v2_mag(_d);
+          // f32 theta = ray_angle;
+          // f32 dist = cosf(theta) * ray_dist;
 
-          if (y0 < 1)
-            y0 = 1;
-          if (y0 > VIEWPORT_H - 2)
-            y0 = VIEWPORT_H - 2;
-          if (y1 < 1)
-            y1 = 1;
-          if (y1 > VIEWPORT_H - 2)
-            y1 = VIEWPORT_H - 2;
+          // i32 h = (int) (VIEWPORT_H / dist);
+          // i32 y0 = max((VIEWPORT_H / 2) - (h / 2), 0);
+          // i32 y1 = min((VIEWPORT_H / 2) + (h / 2), VIEWPORT_H - 1);
 
-          u32 ix = VIEWPORT_W - 1 - x;
-          draw_vline(ix, 0, y0-1, 0xFF000000);
-          draw_vline(ix, y0, y1, hit.wall_colour);
-          draw_vline(ix, y1+1, VIEWPORT_H-1, 0xFF000000);
+          // if (y0 < 1)
+          //   y0 = 1;
+          // if (y0 > VIEWPORT_H - 2)
+          //   y0 = VIEWPORT_H - 2;
+          // if (y1 < 1)
+          //   y1 = 1;
+          // if (y1 > VIEWPORT_H - 2)
+          //   y1 = VIEWPORT_H - 2;
+
+          // draw_vline(x, 0, y0-1, 0xFF000000);
+          // draw_vline(x, y0, y1, hit.wall_colour);
+          // draw_vline(x, y1+1, VIEWPORT_H-1, 0xFF000000);
         }
       }
     }

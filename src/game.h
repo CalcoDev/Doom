@@ -9,8 +9,8 @@
 #define WINDOW_W 1280
 #define WINDOW_H 720
 
-#define VIEWPORT_W 1280
-#define VIEWPORT_H 720
+#define VIEWPORT_W 320
+#define VIEWPORT_H 180
 
 #define MAP_W 16
 #define MAP_H 9
