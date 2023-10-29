@@ -40,6 +40,8 @@ static f32 PLAYER_SPEED = 0.05f;
 static f32 PLAYER_SENS = 0.05f;
 
 State state;
+i32 entity_update_indices[ENTITY_COUNT];
+
 b8 debug_view;
 b8 topdown_raycast;
 
@@ -52,6 +54,9 @@ void concat(char* str, char* suffix, i32 offset, i32 length)
 // TODO(calco): remove
 void game_init(void)
 {
+  for (i32 e = 0; e < ENTITY_COUNT; ++e)
+    entity_update_indices[e] = e;
+
   // Font
   load_texture_internal(".\\assets\\font.png", (v2i) {128, 128}, &state.font_tex);
 
@@ -78,7 +83,20 @@ void game_init(void)
   fiipestil.scale = (v2f){1, 1};
   fiipestil.z_transform = 10.f;
   fiipestil.sprite_idx = 1;
+  fiipestil.tex_pos = (v2i) {0, 0};
+  fiipestil.tex_off = (v2i) {64, 64};
   game_add_entity(fiipestil);
+
+  load_texture(".\\assets\\win_text.png");
+  Entity win_text = {0};
+  win_text.flags = EntityFlag_Sprite;
+  win_text.position = (v2f){4, 4};
+  win_text.scale = (v2f){1, 1};
+  win_text.z_transform = 10.f;
+  win_text.sprite_idx = 3;
+  win_text.tex_pos = (v2i) {0, 0};
+  win_text.tex_off = (v2i) {64, 64};
+  game_add_entity(win_text);
 
   state.show_debug_ui = 1;
 }
@@ -148,8 +166,8 @@ void draw_vline(i32 x, i32 y0, i32 y1, u32 colour)
 
 int entity_dist_sort(const void* v1, const void* v2)
 {
-  const Entity* e1 = (const Entity*)v1;
-  const Entity* e2 = (const Entity*)v2;
+  Entity* e1 = &state.entities[*((const i32*)v1)];
+  Entity* e2 = &state.entities[*((const i32*)v2)];
 
   // TODO(calco): Should cache this but meh
   v2f dvec1 = {
@@ -164,7 +182,7 @@ int entity_dist_sort(const void* v1, const void* v2)
   f32 d1 = v2_sqr_mag(dvec1);
   f32 d2 = v2_sqr_mag(dvec2);
 
-  if (d1 < d2)
+  if (d1 > d2)
     return -1;
   if (d2 > d1)
     return 1;
@@ -215,11 +233,11 @@ void do_sprites()
   if (state.entity_idx < 0)
     return;
 
-  qsort(state.entities, state.entity_idx-1, sizeof(state.entities[0]), entity_dist_sort);
+  qsort(&entity_update_indices, state.entity_idx, sizeof(entity_update_indices[0]), entity_dist_sort);
 
   for (i32 e = 0; e < state.entity_idx; ++e)
   {
-    Entity* entity = &state.entities[e];
+    Entity* entity = &state.entities[entity_update_indices[e]];
     if (entity->flags & EntityFlag_Sprite == 0)
       continue;
 
@@ -244,6 +262,9 @@ void do_sprites()
 
     i32 evertmove = (i32)(-entity->z_transform / etransform.y);
     
+    v2i tex_off = entity->tex_pos;
+    v2i tex_sth = entity->tex_off;
+
     i32 eheight = abs((int)(VIEWPORT_H / etransform.y)) * entity->scale.y;
     i32 y0 = max(0, (-eheight / 2 + VIEWPORT_H / 2 + evertmove));
     i32 y1 = min((eheight / 2 + VIEWPORT_H / 2 + evertmove), VIEWPORT_H - 1);
@@ -255,14 +276,14 @@ void do_sprites()
     // Loop and render
     for (i32 stripe = x0; stripe < x1; ++stripe)
     {
-      i32 tex_x = (int)(256 * (stripe - (-ewidth / 2 + escreenx)) * TEX_W / ewidth) / 256;
+      i32 tex_x = (int)(256 * ((stripe - (-ewidth / 2 + escreenx)) * tex_sth.x) / ewidth) / 256;
       if (etransform.y > 0 && stripe > 0 && stripe < VIEWPORT_W && etransform.y < state.z_buffer[stripe])
       {
         for (i32 sy = y0; sy < y1; ++sy)
         {
           i32 d = (sy-evertmove) * 256 - VIEWPORT_H * 128 + eheight * 128;
-          i32 tex_y = ((d * TEX_H) / eheight) / 256;
-          u32 colour = state.textures[entity->sprite_idx].data[tex_y * TEX_W + tex_x];
+          i32 tex_y = ((d * tex_sth.y) / eheight) / 256;
+          u32 colour = state.textures[entity->sprite_idx].data[(tex_y + tex_off.y) * TEX_W + (tex_x + tex_off.x)];
           if ((colour >> 24) & 0xFF != 0) // non transparent
             set_pixel(stripe, sy, colour);
         }
@@ -380,18 +401,18 @@ void render_raycast()
     2, 0xFFFFFFFF
   );
 
-  draw_font_char((v2i) {20, 20}, 0.f, 0xFFA23F62, 'L');
-  draw_font_char((v2i) {40, 20}, 0.f, 0xFFFFFFFF, 'W');
+  // draw_font_char((v2i) {20, 20}, 0.f, 0xFFA23F62, 'L');
+  // draw_font_char((v2i) {40, 20}, 0.f, 0xFFFFFFFF, 'W');
 
-  draw_font_str(
-    (v2i) {40, 40}, 0.f, 0xFF0000FF,
-    "TEXT YOOO"
-  );
+  // draw_font_str(
+  //   (v2i) {40, 40}, 0.f, 0xFF0000FF,
+  //   "TEXT YOOO"
+  // );
 
-  draw_font_str(
-    (v2i) {120, 80}, 0.f, 0xFF0000FF,
-    "Click here to buy!!!"
-  );
+  // draw_font_str(
+  //   (v2i) {120, 80}, 0.f, 0xFF0000FF,
+  //   "Click here to buy!!!"
+  // );
 }
 
 void game_update(void)
@@ -431,6 +452,9 @@ void game_debug_ui(void)
     igInputFloat2("Scale", state.entities[0].scale.v, "%.2f", ImGuiTextFlags_None);
     igInputFloat2("Position", state.entities[0].position.v, "%.2f", ImGuiTextFlags_None);
     igInputFloat("Z Transform", &state.entities[0].z_transform, 0.1f, 1.f, "%.2f", ImGuiTextFlags_None);
+
+    igInputInt2("Tex Pos", state.entities[0].tex_pos.v, ImGuiTextFlags_None);
+    igInputInt2("Tex Off", state.entities[0].tex_off.v, ImGuiTextFlags_None);
   }
 
   igEnd();

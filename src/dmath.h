@@ -13,16 +13,24 @@ typedef union v2f
   };
 } v2f;
 
-typedef struct v2i
+typedef union v2i
 {
-  i32 x;
-  i32 y;
+  i32 v[2];
+  struct
+  {
+    i32 x;
+    i32 y;
+  };
 } v2i;
 
-typedef struct v2u
+typedef union v2u
 {
-  u32 x;
-  u32 y;
+  u32 v[2];
+  struct
+  {
+    u32 x;
+    u32 y;
+  };
 } v2u;
 
 #define v2_sqr_mag(a) ((a.x) * (a.x) + (a.y) * (a.y))

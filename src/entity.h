@@ -24,6 +24,8 @@ typedef struct Entity
     i32 sound_idx;
 
     i32 sprite_idx;
+    v2i tex_pos;
+    v2i tex_off;
 } Entity;
 
 // TODO(calco): Something like this for components I guess?
