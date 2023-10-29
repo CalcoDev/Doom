@@ -68,6 +68,8 @@ typedef struct State
   // Input
   b8 prev_keys[GLFW_KEY_LAST];
   b8 curr_keys[GLFW_KEY_LAST];
+  v2f prev_mouse;
+  v2f curr_mouse;
 
   // Game
   struct Player

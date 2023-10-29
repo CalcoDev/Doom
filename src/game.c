@@ -8,6 +8,9 @@
 
 #include "os_utils.h"
 
+#define GLFW_INCLUDE_NONE
+#include <glfw/glfw3.h>
+
 const static u8 MAP_DATA[MAP_W * MAP_H] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
@@ -37,7 +40,7 @@ const static i32 TEXTURE_DATA[4] = {
 
 const static u32 PLAYER_COLOUR = 0xFF0000FF;
 static f32 PLAYER_SPEED = 0.05f;
-static f32 PLAYER_SENS = 0.05f;
+static f32 PLAYER_SENS = 0.005f;
 
 State state;
 i32 entity_update_indices[ENTITY_COUNT];
@@ -101,10 +104,10 @@ void game_init(void)
   state.show_debug_ui = 1;
 }
 
-void move(f32 amount)
+void move(v2f dir, f32 amount)
 {
-  f32 x = state.player.dir.x * amount;
-  f32 y = state.player.dir.y * amount;
+  f32 x = dir.x * amount;
+  f32 y = dir.y * amount;
 
   v2f npos = { state.player.pos.x + x, state.player.pos.y + y };
   v2i mpos = { (i32)state.player.pos.x, (i32)state.player.pos.y };
@@ -418,17 +421,26 @@ void render_raycast()
 void game_update(void)
 {
   if (GetKeyPressed(GLFW_KEY_F3))
+  {
     state.show_debug_ui = !state.show_debug_ui;
-  
-  if (GetKeyDown(GLFW_KEY_A))
-    rotate(-PLAYER_SENS);
-  if (GetKeyDown(GLFW_KEY_D))
-    rotate(+PLAYER_SENS);
+
+    if (!state.show_debug_ui)
+      glfwSetInputMode(state.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    else
+      glfwSetInputMode(state.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+  }
   
   if (GetKeyDown(GLFW_KEY_W))
-    move(+PLAYER_SPEED);
+    move(state.player.dir, +PLAYER_SPEED);
+  if (GetKeyDown(GLFW_KEY_A))
+    move(state.player.plane, -PLAYER_SPEED);
   if (GetKeyDown(GLFW_KEY_S))
-    move(-PLAYER_SPEED);
+    move(state.player.dir, -PLAYER_SPEED);
+  if (GetKeyDown(GLFW_KEY_D))
+    move(state.player.plane, +PLAYER_SPEED);
+  
+  if (!state.show_debug_ui)
+    rotate((state.curr_mouse.x - state.prev_mouse.x) * PLAYER_SENS);
   
   ClearPixels();
   if (debug_view)
@@ -446,6 +458,8 @@ void game_debug_ui(void)
   if (!debug_view)
   {
     igText("Framerate: %.4f", 1.f / (state.curr_time - state.prev_time));
+
+    igInputFloat("Player Sensitivity", &PLAYER_SENS, 0.01f, 0.1f, "%.4f", ImGuiTextFlags_None);
 
     igCheckbox("topdown Raycast", &topdown_raycast);
 

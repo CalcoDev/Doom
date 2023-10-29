@@ -107,10 +107,15 @@ int main(void)
     {
       for (u32 i = 0; i < GLFW_KEY_LAST; ++i)
         state->prev_keys[i] = state->curr_keys[i];
+      state->prev_mouse = state->curr_mouse;
 
       glfwPollEvents();
       if (GetKeyPressed(GLFW_KEY_ESCAPE))
         glfwSetWindowShouldClose(state->window, 1);
+      
+      f64 x, y;
+      glfwGetCursorPos(state->window, &x, &y);
+      state->curr_mouse = (v2f) {(f32)x, (f32)y};
 
       game_update();
 
