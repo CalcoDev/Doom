@@ -29,6 +29,9 @@
 
 #define SOUND_WORLD_SCALE 100
 
+#define FONT_GLYPH_W 8
+#define FONT_GLYPH_H 8
+
 typedef struct SoundSource
 {
   char* path;
@@ -42,6 +45,8 @@ typedef struct State
   u32 glfw_texture;
   u32 pixels[VIEWPORT_W * VIEWPORT_H];
   f32 z_buffer[VIEWPORT_W];
+
+  i32 font_texture_idx;
 
   // Audio
   ma_engine audio_engine;
@@ -103,11 +108,15 @@ i32 load_texture(char* path);
 #define load_texture_idx(path, index) load_texture_internal(path, sizeof(path) / 1, index)
 void load_texture_internal(char* path, i32 size, i32 idx);
 
-void draw_texture(i32 x, i32 y, u32 w, u32 h, u32* pixels);
+void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2f scale, u32* pixels);
+void draw_texture(v2i pos, v2f scale, u32* pixels);
+
+void draw_font_char(v2i pos, f32 z, u32 colour, char c);
+void draw_font_str(v2i pos, f32 z, u32 colour, char* str);
+i32 get_font_width(char* str);
 
 i32 load_sound(char* path);
 i32 play_sound(i32 index, b8 spatial);
-
 void set_sound_pos(i32 idx, v2f pos);
 void set_sound_dir(i32 idx, v2f dir);
 

@@ -368,7 +368,7 @@ void render_raycast()
 
   do_sprites();
 
-  draw_texture(VIEWPORT_W - 1 - 64, VIEWPORT_H - 1 - 64, 64, 64, &state.textures[2].data);
+  draw_texture((v2i){VIEWPORT_W - 1 - 128, VIEWPORT_H - 1 - 128}, (v2f){1, 2}, &state.textures[2].data);
 }
 
 void game_update(void)
@@ -462,17 +462,47 @@ i32 load_texture(char* path)
   return idx;
 }
 
-void draw_texture(i32 x, i32 y, u32 w, u32 h, u32* pixels)
+void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2f scale, u32* pixels)
 {
-  for (i32 yy = 0; yy < h; ++yy)
+  v2f offset = {
+    (tex_b.x - tex_a.x) * scale.x,
+    (tex_b.y + tex_a.y) * scale.y
+  };
+
+  v2f step = {
+    min(scale.x, 1.f),
+    min(scale.y, 1.f)
+  };
+  for (f32 y = 0; y < offset.y; y += step.y)
   {
-    for (i32 xx = 0; xx < w; ++xx)
+    for (f32 x = 0; x < offset.x; x += step.x)
     {
-      u32 colour = pixels[yy * w + xx];
-      if ((colour >> 24) & 0xFF != 0) // non transparent
-        set_pixel(min(x + xx, VIEWPORT_W-1), min(y + yy, VIEWPORT_H-1), colour);
+      u32 colour = pixels[(tex_a.y + (i32)(y / scale.y)) * TEX_W + (tex_a.x + (i32)(x / scale.x))];
+      if ((colour >> 24) & 0xFF != 0)
+        set_pixel(min(pos.x + (i32)x, VIEWPORT_W-1), min(pos.y + (i32)y, VIEWPORT_H-1), colour);
     }
   }
+}
+
+void draw_texture(v2i pos, v2f scale, u32* pixels)
+{
+  draw_texture_rect(pos, (v2i){0, 0}, (v2i){TEX_W, TEX_H}, scale, pixels);
+}
+
+// TODO(calco):
+void draw_font_char(v2i pos, f32 z, u32 colour, char c)
+{
+  
+}
+
+void draw_font_str(v2i pos, f32 z, u32 colour, char* str)
+{
+
+}
+
+i32 get_font_width(char* str)
+{
+  return 1;
 }
 
 i32 load_sound(char* path)
