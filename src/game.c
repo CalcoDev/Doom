@@ -417,11 +417,6 @@ void game_debug_ui(void)
     igInputFloat2("Scale", state.entities[0].scale.v, "%.2f", ImGuiTextFlags_None);
     igInputFloat2("Position", state.entities[0].position.v, "%.2f", ImGuiTextFlags_None);
     igInputFloat("Z Transform", &state.entities[0].z_transform, 0.1f, 1.f, "%.2f", ImGuiTextFlags_None);
-
-    if (igButton("Play sound", (ImVec2){300, 150}))
-    {
-      play_sound(0);
-    }
   }
 
   igEnd();
@@ -469,11 +464,10 @@ void make_sound_available(void* user_data, ma_sound* sound)
 
 b8 is_sound_available(i32 index)
 {
-  ma_sound* sound = &state.sounds[index];
-  return sound->endCallback == NULL;
+  return state.sounds[index].endCallback == NULL;
 }
 
-void play_sound(i32 index)
+i32 play_sound(i32 index, b8 spatial)
 {
   i32 idx = state.sound_idx;
   if (!is_sound_available(idx))
@@ -492,10 +486,24 @@ void play_sound(i32 index)
   SoundSource source = state.sound_sources[index];
   ma_sound_init_from_file(&state.audio_engine, source.path, 0, NULL, NULL, &state.sounds[idx]);
   ma_sound_start(&state.sounds[idx]);
+  ma_sound_set_spatialization_enabled(&state.sounds[idx], spatial);
   ma_sound_set_end_callback(&state.sounds[idx], make_sound_available, NULL);
 
   // Scuffed as it guarantees literally nothing but hey, what can do.
   state.sound_idx = (idx + 1) % SOUND_INSTANCE_COUNT;
+}
+
+void set_sound_pos(i32 idx, v2f pos)
+{
+  ma_sound_set_position(&state.sounds[idx], 
+    pos.x * SOUND_WORLD_SCALE, 0.f, pos.y * SOUND_WORLD_SCALE);
+}
+
+void set_sound_dir(i32 idx, v2f dir)
+{
+  // TODO(calco): Maybe multiply by scale?
+  ma_sound_set_direction(&state.sounds[idx],
+    dir.x, 0.f, dir.y);
 }
 
 b8 GetKeyPressed(u16 key)

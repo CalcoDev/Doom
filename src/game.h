@@ -25,7 +25,9 @@
 
 #define ENTITY_COUNT 64
 #define SOUND_SOURCE_COUNT 16
-#define SOUND_INSTANCE_COUNT 16
+#define SOUND_INSTANCE_COUNT 128
+
+#define SOUND_WORLD_SCALE 100
 
 typedef struct SoundSource
 {
@@ -97,6 +99,9 @@ void ClearPixels(void);
 void set_pixel(i32 x, i32 y, u32 colour);
 
 i32 load_sound(char* path);
-void play_sound(i32 index);
+i32 play_sound(i32 index, b8 spatial);
+
+void set_sound_pos(i32 idx, v2f pos);
+void set_sound_dir(i32 idx, v2f dir);
 
 #endif

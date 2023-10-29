@@ -26,4 +26,11 @@ typedef struct Entity
     i32 sprite_idx;
 } Entity;
 
+// TODO(calco): Something like this for components I guess?
+// typedef struct EntityGroup
+// {
+//     Entity* entity;
+//     EntityGroup* next;
+// } EntityGroup;
+
 #endif
