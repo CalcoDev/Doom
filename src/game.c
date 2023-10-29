@@ -75,6 +75,8 @@ void game_init(void)
   Entity fiipestil = {0};
   fiipestil.flags = EntityFlag_Sprite;
   fiipestil.position = (v2f){5, 5};
+  fiipestil.scale = (v2f){1, 1};
+  fiipestil.z_transform = 10.f;
   fiipestil.sprite_idx = 1;
   game_add_entity(fiipestil);
 
@@ -218,6 +220,8 @@ void do_sprites()
   for (i32 e = 0; e < state.entity_idx; ++e)
   {
     Entity* entity = &state.entities[e];
+    if (entity->flags & EntityFlag_Sprite == 0)
+      continue;
 
     v2f ppos = state.player.pos;
     v2f pplane = state.player.plane;
@@ -237,12 +241,14 @@ void do_sprites()
     };
 
     i32 escreenx = (i32)((VIEWPORT_W / 2) * (1.f + etransform.x / etransform.y));
-    
-    i32 eheight = abs((int)(VIEWPORT_H / etransform.y));
-    i32 y0 = max(0, (-eheight / 2 + VIEWPORT_H / 2));
-    i32 y1 = min((eheight / 2 + VIEWPORT_H / 2), VIEWPORT_H - 1);
 
-    i32 ewidth = abs((int)(VIEWPORT_H / etransform.y));
+    i32 evertmove = (i32)(-entity->z_transform / etransform.y);
+    
+    i32 eheight = abs((int)(VIEWPORT_H / etransform.y)) * entity->scale.y;
+    i32 y0 = max(0, (-eheight / 2 + VIEWPORT_H / 2 + evertmove));
+    i32 y1 = min((eheight / 2 + VIEWPORT_H / 2 + evertmove), VIEWPORT_H - 1);
+
+    i32 ewidth = abs((int)(VIEWPORT_H / etransform.y)) * entity->scale.x;
     i32 x0 = max(0, (-ewidth / 2 + escreenx));
     i32 x1 = min((ewidth / 2 + escreenx), VIEWPORT_W - 1);
 
@@ -254,7 +260,7 @@ void do_sprites()
       {
         for (i32 sy = y0; sy < y1; ++sy)
         {
-          i32 d = (sy) * 256 - VIEWPORT_H * 128 + eheight * 128;
+          i32 d = (sy-evertmove) * 256 - VIEWPORT_H * 128 + eheight * 128;
           i32 tex_y = ((d * TEX_H) / eheight) / 256;
           u32 colour = state.textures[entity->sprite_idx].data[tex_y * TEX_W + tex_x];
           if ((colour >> 24) & 0xFF != 0) // non transparent
@@ -399,6 +405,10 @@ void game_debug_ui(void)
     igText("Framerate: %.4f", 1.f / (state.curr_time - state.prev_time));
 
     igCheckbox("topdown Raycast", &topdown_raycast);
+
+    igInputFloat2("Scale", state.entities[0].scale.v, "%.2f", ImGuiTextFlags_None);
+    igInputFloat2("Position", state.entities[0].position.v, "%.2f", ImGuiTextFlags_None);
+    igInputFloat("Z Transform", &state.entities[0].z_transform, 0.1f, 1.f, "%.2f", ImGuiTextFlags_None);
   }
 
   igEnd();
