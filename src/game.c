@@ -49,17 +49,6 @@ void concat(char* str, char* suffix, i32 offset, i32 length)
   *(str + offset + length) = '\0';
 }
 
-#define load_texture(path, index) load_texture_internal(path, sizeof(path) / 1, index)
-void load_texture_internal(char* path, i32 size, i32 idx)
-{
-  i32 x, y, comp;
-  char pathh[1024];
-  get_asset_path(pathh, path, 1024, 20);
-  unsigned char* data = stbi_load(pathh, &x, &y, &comp, STBI_rgb_alpha);
-  memcpy(state.textures[idx].data, data, TEX_W * TEX_H * 4);
-  stbi_image_free(data);
-}
-
 // TODO(calco): remove
 void game_init(void)
 {
@@ -68,7 +57,6 @@ void game_init(void)
   result = ma_engine_init(NULL, &state.audio_engine);
 
   i32 idx = load_sound("C:\\Users\\calco\\Documents\\Calcopod\\Development\\OpenGL\\doom\\assets\\intro.wav");
-  printf("Loaded amodo bazooka at index: %d", idx);
 
   // Player Data
   state.player.pos = (v2f) {4, 2};
@@ -76,8 +64,9 @@ void game_init(void)
   state.player.plane = (v2f) {0.66, 0};
 
   // Textures
-  load_texture(".\\assets\\wall_tex.png", 0);
-  load_texture(".\\assets\\fiipestil.png", 1);
+  load_texture(".\\assets\\wall_tex.png");
+  load_texture(".\\assets\\fiipestil.png");
+  load_texture(".\\assets\\gun.png");
 
   // Entites
   Entity fiipestil = {0};
@@ -378,6 +367,8 @@ void render_raycast()
   }
 
   do_sprites();
+
+  draw_texture(VIEWPORT_W - 1 - 64, VIEWPORT_H - 1 - 64, 64, 64, &state.textures[2].data);
 }
 
 void game_update(void)
@@ -447,6 +438,41 @@ void ClearPixels(void)
 void set_pixel(i32 x, i32 y, u32 colour)
 {
   state.pixels[y * VIEWPORT_W + x] = colour;
+}
+
+void load_texture_internal(char* path, i32 size, i32 idx)
+{
+  i32 x, y, comp;
+  char pathh[1024];
+  get_asset_path(pathh, path, 1024, 20);
+  unsigned char* data = stbi_load(pathh, &x, &y, &comp, STBI_rgb_alpha);
+  memcpy(state.textures[idx].data, data, TEX_W * TEX_H * 4);
+  stbi_image_free(data);
+}
+
+i32 load_texture(char* path)
+{
+  i32 idx = state.texture_idx;
+  if (idx >= TEX_COUNT)
+    tn_logfatal("Ran out of texture slots to fill!");
+  state.texture_idx += 1;
+  
+  load_texture_idx(path, idx);
+
+  return idx;
+}
+
+void draw_texture(i32 x, i32 y, u32 w, u32 h, u32* pixels)
+{
+  for (i32 yy = 0; yy < h; ++yy)
+  {
+    for (i32 xx = 0; xx < w; ++xx)
+    {
+      u32 colour = pixels[yy * w + xx];
+      if ((colour >> 24) & 0xFF != 0) // non transparent
+        set_pixel(min(x + xx, VIEWPORT_W-1), min(y + yy, VIEWPORT_H-1), colour);
+    }
+  }
 }
 
 i32 load_sound(char* path)

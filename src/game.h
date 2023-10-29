@@ -76,6 +76,7 @@ typedef struct State
   {
     u32 data[TEX_W * TEX_H];
   } textures[TEX_COUNT];
+  i32 texture_idx;
 
   Entity entities[ENTITY_COUNT];
   i32 entity_idx;
@@ -97,6 +98,12 @@ b8 GetKeyUp(u16 key);
 
 void ClearPixels(void);
 void set_pixel(i32 x, i32 y, u32 colour);
+
+i32 load_texture(char* path);
+#define load_texture_idx(path, index) load_texture_internal(path, sizeof(path) / 1, index)
+void load_texture_internal(char* path, i32 size, i32 idx);
+
+void draw_texture(i32 x, i32 y, u32 w, u32 h, u32* pixels);
 
 i32 load_sound(char* path);
 i32 play_sound(i32 index, b8 spatial);
