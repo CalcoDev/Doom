@@ -1,6 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "miniaudio.h"
+
 #include "cimgui_include.h"
 #include "defines.h"
 #include "dmath.h"
@@ -22,6 +24,14 @@
 #define TEX_H 64
 
 #define ENTITY_COUNT 64
+#define SOUND_SOURCE_COUNT 16
+#define SOUND_INSTANCE_COUNT 128
+
+typedef struct SoundSource
+{
+  char* path;
+  ma_sound source;
+} SoundSource;
 
 typedef struct State
 {
@@ -30,6 +40,13 @@ typedef struct State
   u32 glfw_texture;
   u32 pixels[VIEWPORT_W * VIEWPORT_H];
   f32 z_buffer[VIEWPORT_W];
+
+  // Audio
+  ma_engine audio_engine;
+  SoundSource sound_sources[SOUND_SOURCE_COUNT];
+  ma_sound sounds[SOUND_INSTANCE_COUNT];
+  i32 sound_source_idx;
+  i32 sound_idx;
 
   // Time
   f32 prev_time;
@@ -76,5 +93,8 @@ b8 GetKeyUp(u16 key);
 
 void ClearPixels(void);
 void set_pixel(i32 x, i32 y, u32 colour);
+
+i32 load_sound(char* path);
+void play_sound(i32 index);
 
 #endif

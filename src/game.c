@@ -60,8 +60,16 @@ void load_texture_internal(char* path, i32 size, i32 idx)
   stbi_image_free(data);
 }
 
+// TODO(calco): remove
 void game_init(void)
 {
+  // Audio engine
+  ma_result result;
+  result = ma_engine_init(NULL, &state.audio_engine);
+
+  i32 idx = load_sound("C:\\Users\\calco\\Documents\\Calcopod\\Development\\OpenGL\\doom\\assets\\intro.wav");
+  printf("Loaded amodo bazooka at index: %d", idx);
+
   // Player Data
   state.player.pos = (v2f) {4, 2};
   state.player.dir = (v2f) {0, -1};
@@ -409,6 +417,11 @@ void game_debug_ui(void)
     igInputFloat2("Scale", state.entities[0].scale.v, "%.2f", ImGuiTextFlags_None);
     igInputFloat2("Position", state.entities[0].position.v, "%.2f", ImGuiTextFlags_None);
     igInputFloat("Z Transform", &state.entities[0].z_transform, 0.1f, 1.f, "%.2f", ImGuiTextFlags_None);
+
+    if (igButton("Play sound", (ImVec2){300, 150}))
+    {
+      play_sound(0);
+    }
   }
 
   igEnd();
@@ -416,6 +429,13 @@ void game_debug_ui(void)
 
 void game_free(void) 
 {
+  for (i32 s = 0; s < state.sound_source_idx; ++s)
+    ma_sound_uninit(&state.sound_sources[s].source);
+  
+  for (i32 s = 0; s < state.sound_idx; ++s)
+    ma_sound_uninit(&state.sounds[s]);
+
+  ma_engine_uninit(&state.audio_engine);
 }
 
 void game_add_entity(Entity entity)
@@ -431,6 +451,27 @@ void ClearPixels(void)
 void set_pixel(i32 x, i32 y, u32 colour)
 {
   state.pixels[y * VIEWPORT_W + x] = colour;
+}
+
+i32 load_sound(char* path)
+{
+  i32 idx = state.sound_source_idx;
+  state.sound_sources[idx].path = path;
+  ma_sound_init_from_file(&state.audio_engine, path, 0, NULL, NULL, &state.sound_sources[idx].source);
+  state.sound_source_idx += 1;
+}
+
+void play_sound(i32 index)
+{
+  i32 idx = state.sound_idx;
+  SoundSource source = state.sound_sources[index];
+  ma_sound_init_from_file(&state.audio_engine, source.path, 0, NULL, NULL, &state.sounds[idx]);
+  ma_sound_start(&state.sounds[idx]);
+  
+  // TODO(calco): Check if spot is empty and not just wrap around buffer lmao
+  // ma_sound_set_end_callback()
+
+  state.sound_idx = (state.sound_idx + 1) % SOUND_INSTANCE_COUNT;
 }
 
 b8 GetKeyPressed(u16 key)

@@ -97,25 +97,6 @@ int main(void)
 
   glUseProgram(program);
 
-  ma_result result;
-  ma_engine engine;
-  result = ma_engine_init(NULL, &engine);
-  if (result != MA_SUCCESS) {
-    return -1;
-  }
-
-  ma_engine_listener_set_cone(&engine, 0, f_PI * 0.5f, f_PI, 200);
-
-  const f32 scl = 10.f;
-
-  ma_sound sound;
-  result = ma_sound_init_from_file(&engine, "C:\\Users\\calco\\Documents\\Calcopod\\Development\\OpenGL\\doom\\assets\\intro.wav", 0, NULL, NULL, &sound);
-  ma_sound_set_spatialization_enabled(&sound, 1);
-  ma_sound_set_position(&sound, state->entities[0].position.x * scl, 0.f, state->entities[0].position.y * scl);
-  ma_sound_set_direction(&sound, -state->player.dir.x * scl, 0.f, -state->player.dir.y * scl);
-
-  ma_sound_start(&sound);
-
   game_init();
   while (!glfwWindowShouldClose(state->window))
   {
@@ -132,9 +113,6 @@ int main(void)
         glfwSetWindowShouldClose(state->window, 1);
 
       game_update();
-
-      ma_engine_listener_set_position(&engine, 0, state->player.pos.x * scl, 0.f, state->player.pos.y * scl);
-      ma_engine_listener_set_direction(&engine, 0, state->player.dir.x  * scl, 0.f, state->player.dir.y * scl);
 
       glTexSubImage2D(
           GL_TEXTURE_2D, 0, 0, 0, VIEWPORT_W, VIEWPORT_H, GL_RGBA,
@@ -162,8 +140,6 @@ int main(void)
     }
   }
 
-  ma_engine_uninit(&engine);
-  
   game_free();
 
   ImGui_ImplOpenGL3_Shutdown();
