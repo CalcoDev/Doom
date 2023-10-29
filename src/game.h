@@ -25,7 +25,7 @@
 
 #define ENTITY_COUNT 64
 #define SOUND_SOURCE_COUNT 16
-#define SOUND_INSTANCE_COUNT 128
+#define SOUND_INSTANCE_COUNT 16
 
 typedef struct SoundSource
 {
@@ -43,6 +43,8 @@ typedef struct State
 
   // Audio
   ma_engine audio_engine;
+
+  // Works because miniaudio auto refcounts the sound sources
   SoundSource sound_sources[SOUND_SOURCE_COUNT];
   ma_sound sounds[SOUND_INSTANCE_COUNT];
   i32 sound_source_idx;

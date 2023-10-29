@@ -432,6 +432,7 @@ void game_free(void)
   for (i32 s = 0; s < state.sound_source_idx; ++s)
     ma_sound_uninit(&state.sound_sources[s].source);
   
+  // Technically unnecessary as all the sources were already removed.
   for (i32 s = 0; s < state.sound_idx; ++s)
     ma_sound_uninit(&state.sounds[s]);
 
@@ -461,17 +462,40 @@ i32 load_sound(char* path)
   state.sound_source_idx += 1;
 }
 
+void make_sound_available(void* user_data, ma_sound* sound)
+{
+  sound->endCallback = NULL;
+}
+
+b8 is_sound_available(i32 index)
+{
+  ma_sound* sound = &state.sounds[index];
+  return sound->endCallback == NULL;
+}
+
 void play_sound(i32 index)
 {
   i32 idx = state.sound_idx;
+  if (!is_sound_available(idx))
+  {
+    i32 i = idx + 1;
+    for (; i != idx && !is_sound_available(i); i = (i + 1) % SOUND_INSTANCE_COUNT);
+
+    if (i == idx)
+      tn_logfatal("Ran out of audio sources!");
+    
+    idx = i;
+  }
+
+  tn_log("Assigned instanced index %d", idx);
+
   SoundSource source = state.sound_sources[index];
   ma_sound_init_from_file(&state.audio_engine, source.path, 0, NULL, NULL, &state.sounds[idx]);
   ma_sound_start(&state.sounds[idx]);
-  
-  // TODO(calco): Check if spot is empty and not just wrap around buffer lmao
-  // ma_sound_set_end_callback()
+  ma_sound_set_end_callback(&state.sounds[idx], make_sound_available, NULL);
 
-  state.sound_idx = (state.sound_idx + 1) % SOUND_INSTANCE_COUNT;
+  // Scuffed as it guarantees literally nothing but hey, what can do.
+  state.sound_idx = (idx + 1) % SOUND_INSTANCE_COUNT;
 }
 
 b8 GetKeyPressed(u16 key)

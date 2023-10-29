@@ -79,3 +79,10 @@ cleanobjs:
 
 cleanlibs:
 	rm -rf $(BIN)/libs
+
+cleanexe:
+	rm -rf $(BIN)/game
+	rm -rf $(BIN)/game.exp
+	rm -rf $(BIN)/game.ilk
+	rm -rf $(BIN)/game.lib
+	rm -rf $(BIN)/game.pdb
