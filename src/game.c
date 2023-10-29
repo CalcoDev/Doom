@@ -52,6 +52,9 @@ void concat(char* str, char* suffix, i32 offset, i32 length)
 // TODO(calco): remove
 void game_init(void)
 {
+  // Font
+  load_texture_internal(".\\assets\\font.png", (v2i) {128, 128}, &state.font_tex);
+
   // Audio engine
   ma_result result;
   result = ma_engine_init(NULL, &state.audio_engine);
@@ -368,7 +371,27 @@ void render_raycast()
 
   do_sprites();
 
-  draw_texture((v2i){VIEWPORT_W - 1 - 128, VIEWPORT_H - 1 - 128}, (v2f){1, 2}, &state.textures[2].data);
+  draw_texture_idx(
+    (v2i) {
+      VIEWPORT_W - 1 - 64, 
+      VIEWPORT_H - 1 - 64
+    },
+    (v2f) {1, 1},
+    2, 0xFFFFFFFF
+  );
+
+  draw_font_char((v2i) {20, 20}, 0.f, 0xFFA23F62, 'L');
+  draw_font_char((v2i) {40, 20}, 0.f, 0xFFFFFFFF, 'W');
+
+  draw_font_str(
+    (v2i) {40, 40}, 0.f, 0xFF0000FF,
+    "TEXT YOOO"
+  );
+
+  draw_font_str(
+    (v2i) {120, 80}, 0.f, 0xFF0000FF,
+    "Click here to buy!!!"
+  );
 }
 
 void game_update(void)
@@ -440,13 +463,13 @@ void set_pixel(i32 x, i32 y, u32 colour)
   state.pixels[y * VIEWPORT_W + x] = colour;
 }
 
-void load_texture_internal(char* path, i32 size, i32 idx)
+void load_texture_internal(char* path, v2i tex_size, u32* pixels)
 {
   i32 x, y, comp;
   char pathh[1024];
   get_asset_path(pathh, path, 1024, 20);
   unsigned char* data = stbi_load(pathh, &x, &y, &comp, STBI_rgb_alpha);
-  memcpy(state.textures[idx].data, data, TEX_W * TEX_H * 4);
+  memcpy(pixels, data, tex_size.x * tex_size.y * 4);
   stbi_image_free(data);
 }
 
@@ -462,11 +485,27 @@ i32 load_texture(char* path)
   return idx;
 }
 
-void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2f scale, u32* pixels)
+u32 multiply_colors(u32 c1, u32 c2) {
+  u8 a1 = (c1 >> 24) & 0xFF;
+  u8 b1 = (c1 >> 16) & 0xFF;
+  u8 g1 = (c1 >> 8) & 0xFF;
+  u8 r1 = c1 & 0xFF;
+  u8 a2 = (c2 >> 24) & 0xFF;
+  u8 b2 = (c2 >> 16) & 0xFF;
+  u8 g2 = (c2 >> 8) & 0xFF;
+  u8 r2 = c2 & 0xFF;
+  u8 ra = (u8)((a1 * a2) / 255);
+  u8 rb = (u8)((b1 * b2) / 255);
+  u8 rg = (u8)((g1 * g2) / 255);
+  u8 rr = (u8)((r1 * r2) / 255);
+  return (ra << 24) | (rb << 16) | (rg << 8) | rr;
+}
+
+void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate)
 {
   v2f offset = {
     (tex_b.x - tex_a.x) * scale.x,
-    (tex_b.y + tex_a.y) * scale.y
+    (tex_b.y - tex_a.y) * scale.y
   };
 
   v2f step = {
@@ -477,27 +516,55 @@ void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2f scale, u32* pixels)
   {
     for (f32 x = 0; x < offset.x; x += step.x)
     {
-      u32 colour = pixels[(tex_a.y + (i32)(y / scale.y)) * TEX_W + (tex_a.x + (i32)(x / scale.x))];
+      u32 colour = pixels[(tex_a.y + (i32)(y / scale.y)) * tex_size.x + (tex_a.x + (i32)(x / scale.x))];
       if ((colour >> 24) & 0xFF != 0)
+      {
+        colour = multiply_colors(colour, modulate);
         set_pixel(min(pos.x + (i32)x, VIEWPORT_W-1), min(pos.y + (i32)y, VIEWPORT_H-1), colour);
+      }
     }
   }
 }
 
-void draw_texture(v2i pos, v2f scale, u32* pixels)
+void draw_texture_idx(v2i pos, v2f scale, i32 idx, u32 modulate)
 {
-  draw_texture_rect(pos, (v2i){0, 0}, (v2i){TEX_W, TEX_H}, scale, pixels);
+  draw_texture_rect(pos, 
+    (v2i) {0, 0},
+    (v2i) {TEX_W, TEX_H},
+    (v2i) {TEX_W, TEX_H},
+    scale, &state.textures[idx].data, modulate
+  );
 }
 
 // TODO(calco):
 void draw_font_char(v2i pos, f32 z, u32 colour, char c)
 {
-  
+  v2i tex_pos = {
+    ((i32)(c) % 16) * FONT_GLYPH_W, 
+    ((i32)(c) / 16) * FONT_GLYPH_H
+  };
+
+  draw_texture_rect(
+    pos, tex_pos, 
+    (v2i) {
+      tex_pos.x + FONT_GLYPH_W, 
+      tex_pos.y + FONT_GLYPH_H
+    }, 
+    (v2i) {128, 128},
+    (v2f) {1, 1}, &state.font_tex,
+    colour
+  );
 }
 
 void draw_font_str(v2i pos, f32 z, u32 colour, char* str)
 {
-
+  for (i32 c = 0; str[c] != '\0'; ++c)
+  {
+    draw_font_char((v2i) {
+      pos.x + c * FONT_GLYPH_W,
+      pos.y
+    }, z, colour, str[c]);
+  }
 }
 
 i32 get_font_width(char* str)

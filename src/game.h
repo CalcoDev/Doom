@@ -46,7 +46,7 @@ typedef struct State
   u32 pixels[VIEWPORT_W * VIEWPORT_H];
   f32 z_buffer[VIEWPORT_W];
 
-  i32 font_texture_idx;
+  u32 font_tex[128 * 128];
 
   // Audio
   ma_engine audio_engine;
@@ -105,11 +105,11 @@ void ClearPixels(void);
 void set_pixel(i32 x, i32 y, u32 colour);
 
 i32 load_texture(char* path);
-#define load_texture_idx(path, index) load_texture_internal(path, sizeof(path) / 1, index)
-void load_texture_internal(char* path, i32 size, i32 idx);
+#define load_texture_idx(path, index) load_texture_internal(path, (v2i) {TEX_W, TEX_H}, &state.textures[index].data)
+void load_texture_internal(char* path, v2i tex_size, u32* pixels);
 
-void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2f scale, u32* pixels);
-void draw_texture(v2i pos, v2f scale, u32* pixels);
+void draw_texture_idx(v2i pos, v2f scale, i32 idx, u32 modulate);
+void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate);
 
 void draw_font_char(v2i pos, f32 z, u32 colour, char c);
 void draw_font_str(v2i pos, f32 z, u32 colour, char* str);
