@@ -111,7 +111,8 @@ i32 load_texture(char* path);
 void load_texture_internal(char* path, v2i tex_size, u32* pixels);
 
 void draw_texture_idx(v2i pos, v2f scale, i32 idx, u32 modulate);
-void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate);
+void draw_texture_rect_screen(v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate);
+void draw_texture_rect_src(u32* dest, v2i dest_size, v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate);
 
 void draw_font_char(v2i pos, f32 z, u32 colour, char c);
 void draw_font_str(v2i pos, f32 z, u32 colour, char* str);

@@ -539,7 +539,7 @@ u32 multiply_colors(u32 c1, u32 c2) {
   return (ra << 24) | (rb << 16) | (rg << 8) | rr;
 }
 
-void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate)
+void draw_texture_rect_src(u32* dest, v2i dest_size, v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate)
 {
   v2f offset = {
     (tex_b.x - tex_a.x) * scale.x,
@@ -558,15 +558,23 @@ void draw_texture_rect(v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u
       if ((colour >> 24) & 0xFF != 0)
       {
         colour = multiply_colors(colour, modulate);
-        set_pixel(min(pos.x + (i32)x, VIEWPORT_W-1), min(pos.y + (i32)y, VIEWPORT_H-1), colour);
+        // set_pixel(min(pos.x + (i32)x, VIEWPORT_W-1), min(pos.y + (i32)y, VIEWPORT_H-1), colour);
+        i32 fx = min(pos.x + (i32)x, dest_size.x-1);
+        i32 fy = min(pos.y + (i32)y, dest_size.y-1);
+        dest[fy * dest_size.x + fx] = colour;
       }
     }
   }
 }
 
+void draw_texture_rect_screen(v2i pos, v2i tex_a, v2i tex_b, v2i tex_size, v2f scale, u32* pixels, u32 modulate)
+{
+  draw_texture_rect_src(&state.pixels, (v2i){VIEWPORT_W, VIEWPORT_H}, pos, tex_a, tex_b, tex_size, scale, pixels, modulate);
+}
+
 void draw_texture_idx(v2i pos, v2f scale, i32 idx, u32 modulate)
 {
-  draw_texture_rect(pos, 
+  draw_texture_rect_screen(pos, 
     (v2i) {0, 0},
     (v2i) {TEX_W, TEX_H},
     (v2i) {TEX_W, TEX_H},
@@ -582,7 +590,7 @@ void draw_font_char(v2i pos, f32 z, u32 colour, char c)
     ((i32)(c) / 16) * FONT_GLYPH_H
   };
 
-  draw_texture_rect(
+  draw_texture_rect_screen(
     pos, tex_pos, 
     (v2i) {
       tex_pos.x + FONT_GLYPH_W, 
